@@ -1,0 +1,333 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using DungeonDredge.Core;
+using DungeonDredge.Player;
+
+namespace DungeonDredge.Inventory
+{
+    public class PlayerInventory : MonoBehaviour
+    {
+        [Header("References")]
+        [SerializeField] private BackpackData startingBackpack;
+        [SerializeField] private ItemDatabase itemDatabase;
+        [SerializeField] private Transform dropPoint;
+
+        [Header("Backpack")]
+        [SerializeField] private InventoryGrid inventoryGrid;
+        [SerializeField] private GameObject droppedBackpackPrefab;
+
+        [Header("Input")]
+        [SerializeField] private InputActionReference dropBackpackAction;
+        [SerializeField] private InputActionReference openInventoryAction;
+
+        // State
+        private BackpackData currentBackpack;
+        private bool inventoryOpen = false;
+        private GameObject droppedBackpack;
+
+        // References
+        private PlayerMovement playerMovement;
+        private PlayerStats playerStats;
+
+        // Properties
+        public InventoryGrid Grid => inventoryGrid;
+        public BackpackData CurrentBackpack => currentBackpack;
+        public bool IsInventoryOpen => inventoryOpen;
+        public bool HasDroppedBackpack => droppedBackpack != null;
+
+        // Events
+        public System.Action OnInventoryOpened;
+        public System.Action OnInventoryClosed;
+        public System.Action OnBackpackDropped;
+        public System.Action OnBackpackPickedUp;
+
+        private void Awake()
+        {
+            playerMovement = GetComponent<PlayerMovement>();
+            playerStats = GetComponent<PlayerStats>();
+
+            if (inventoryGrid == null)
+            {
+                inventoryGrid = GetComponentInChildren<InventoryGrid>();
+            }
+
+            if (dropPoint == null)
+            {
+                dropPoint = transform;
+            }
+        }
+
+        private void Start()
+        {
+            // Initialize with starting backpack
+            if (startingBackpack != null)
+            {
+                EquipBackpack(startingBackpack);
+            }
+
+            // Subscribe to weight changes
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.OnWeightChanged += OnWeightChanged;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (dropBackpackAction != null)
+            {
+                dropBackpackAction.action.Enable();
+                dropBackpackAction.action.performed += OnDropBackpack;
+            }
+
+            if (openInventoryAction != null)
+            {
+                openInventoryAction.action.Enable();
+                openInventoryAction.action.performed += OnToggleInventory;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (dropBackpackAction != null)
+            {
+                dropBackpackAction.action.performed -= OnDropBackpack;
+            }
+
+            if (openInventoryAction != null)
+            {
+                openInventoryAction.action.performed -= OnToggleInventory;
+            }
+
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.OnWeightChanged -= OnWeightChanged;
+            }
+        }
+
+        public void EquipBackpack(BackpackData backpack)
+        {
+            currentBackpack = backpack;
+            
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ResizeGrid(backpack.gridWidth, backpack.gridHeight);
+            }
+        }
+
+        public void UpgradeBackpack()
+        {
+            if (currentBackpack?.nextUpgrade != null)
+            {
+                EquipBackpack(currentBackpack.nextUpgrade);
+            }
+        }
+
+        private void OnWeightChanged(float weight)
+        {
+            // Update player movement with weight ratio
+            if (playerMovement != null && playerStats != null)
+            {
+                float capacity = playerStats.WeightCapacity;
+                inventoryGrid.SetWeightCapacity(capacity);
+                playerMovement.SetWeightRatio(weight / capacity);
+            }
+        }
+
+        #region Backpack Drop/Pickup
+
+        private void OnDropBackpack(InputAction.CallbackContext context)
+        {
+            if (HasDroppedBackpack)
+            {
+                TryPickupBackpack();
+            }
+            else
+            {
+                DropBackpack();
+            }
+        }
+
+        public void DropBackpack()
+        {
+            if (currentBackpack == null || inventoryGrid == null) return;
+            if (HasDroppedBackpack) return; // Can only drop one
+
+            // Create dropped backpack in world
+            Vector3 dropPosition = dropPoint.position + dropPoint.forward * 0.5f;
+            
+            if (droppedBackpackPrefab != null)
+            {
+                droppedBackpack = Instantiate(droppedBackpackPrefab, dropPosition, Quaternion.identity);
+                
+                // Transfer inventory data to dropped backpack
+                var droppedInventory = droppedBackpack.GetComponent<DroppedBackpack>();
+                if (droppedInventory != null)
+                {
+                    droppedInventory.Initialize(inventoryGrid.GetSaveData(), currentBackpack);
+                }
+            }
+
+            // Clear player inventory but keep backpack equipped
+            inventoryGrid.ClearAll();
+
+            // Generate noise
+            EventBus.Publish(new NoiseEvent
+            {
+                Position = dropPosition,
+                Intensity = 1.0f,
+                Source = gameObject
+            });
+
+            // Update weight (now at 0)
+            OnWeightChanged(0);
+
+            OnBackpackDropped?.Invoke();
+        }
+
+        public void TryPickupBackpack()
+        {
+            if (!HasDroppedBackpack) return;
+
+            // Check distance
+            float distance = Vector3.Distance(transform.position, droppedBackpack.transform.position);
+            if (distance > 3f)
+            {
+                Debug.Log("Too far from backpack");
+                return;
+            }
+
+            // Get dropped backpack data
+            var droppedInventory = droppedBackpack.GetComponent<DroppedBackpack>();
+            if (droppedInventory != null)
+            {
+                // Restore inventory
+                inventoryGrid.LoadSaveData(droppedInventory.SavedInventory, itemDatabase);
+            }
+
+            // Destroy dropped backpack
+            Destroy(droppedBackpack);
+            droppedBackpack = null;
+
+            OnBackpackPickedUp?.Invoke();
+        }
+
+        #endregion
+
+        #region Inventory UI
+
+        private void OnToggleInventory(InputAction.CallbackContext context)
+        {
+            if (inventoryOpen)
+            {
+                CloseInventory();
+            }
+            else
+            {
+                OpenInventory();
+            }
+        }
+
+        public void OpenInventory()
+        {
+            if (inventoryOpen) return;
+
+            inventoryOpen = true;
+            
+            // Unlock cursor
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            OnInventoryOpened?.Invoke();
+        }
+
+        public void CloseInventory()
+        {
+            if (!inventoryOpen) return;
+
+            inventoryOpen = false;
+
+            // Lock cursor
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+
+            OnInventoryClosed?.Invoke();
+        }
+
+        #endregion
+
+        #region Item Operations
+
+        public bool TryPickupItem(ItemData itemData)
+        {
+            if (inventoryGrid == null || itemData == null) return false;
+
+            InventoryItem item = new InventoryItem(itemData);
+            return inventoryGrid.TryAddItemAuto(item);
+        }
+
+        public bool TryPickupItem(InventoryItem item)
+        {
+            if (inventoryGrid == null || item == null) return false;
+            return inventoryGrid.TryAddItemAuto(item);
+        }
+
+        public void DropItem(InventoryItem item)
+        {
+            if (inventoryGrid == null || item == null) return;
+
+            if (inventoryGrid.RemoveItem(item))
+            {
+                // Spawn item in world
+                if (item.itemData.worldPrefab != null)
+                {
+                    Vector3 dropPos = dropPoint.position + dropPoint.forward;
+                    Instantiate(item.itemData.worldPrefab, dropPos, Quaternion.identity);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Save/Load
+
+        public PlayerInventorySaveData GetSaveData()
+        {
+            return new PlayerInventorySaveData
+            {
+                backpackId = currentBackpack?.backpackId,
+                inventory = inventoryGrid?.GetSaveData()
+            };
+        }
+
+        public void LoadSaveData(PlayerInventorySaveData saveData, BackpackDatabase backpackDb)
+        {
+            if (saveData == null) return;
+
+            // Load backpack
+            if (!string.IsNullOrEmpty(saveData.backpackId) && backpackDb != null)
+            {
+                BackpackData backpack = backpackDb.GetBackpack(saveData.backpackId);
+                if (backpack != null)
+                {
+                    EquipBackpack(backpack);
+                }
+            }
+
+            // Load inventory
+            if (saveData.inventory != null && inventoryGrid != null && itemDatabase != null)
+            {
+                inventoryGrid.LoadSaveData(saveData.inventory, itemDatabase);
+            }
+        }
+
+        #endregion
+    }
+
+    [System.Serializable]
+    public class PlayerInventorySaveData
+    {
+        public string backpackId;
+        public InventorySaveData inventory;
+    }
+}
