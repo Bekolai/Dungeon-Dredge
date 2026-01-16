@@ -15,6 +15,7 @@ namespace DungeonDredge.AI
             enemy.Agent.isStopped = true;
             idleTime = 0f;
             idleDuration = Random.Range(2f, 5f);
+        
         }
 
         public override void Update()
@@ -303,7 +304,8 @@ namespace DungeonDredge.AI
         public override void Enter()
         {
             enemy.Agent.isStopped = true;
-            attackCooldown = 0f;
+            attackCooldown = 0f;   
+             enemy.PlayAttackAnimation(); // NEW
         }
 
         public override void Update()
@@ -432,6 +434,7 @@ namespace DungeonDredge.AI
             stunTime = 0f;
             enemy.Agent.isStopped = true;
             enemy.SetStunned(true);
+             enemy.PlayStunnedAnimation(); // NEW
         }
 
         public override void Update()

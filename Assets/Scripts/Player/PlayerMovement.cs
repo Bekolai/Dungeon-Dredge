@@ -43,6 +43,11 @@ namespace DungeonDredge.Player
         private bool isCrouching;
         private float currentHeight;
         private float swayTimer;
+        
+        [Header("Ground Detection")]
+        [SerializeField] private float groundCheckOffset = 0.1f;
+        [SerializeField] private float groundCheckRadius = 0.4f;
+        [SerializeField] private LayerMask groundMask;
 
         // Encumbrance
         private float currentWeightRatio = 0f;
@@ -61,6 +66,7 @@ namespace DungeonDredge.Player
         public bool IsSprinting { get; private set; }
         public float CurrentSpeed { get; private set; }
         public EncumbranceTier CurrentTier => currentTier;
+        public Vector3 Velocity => controller.velocity;
 
         private void Awake()
         {
@@ -86,13 +92,14 @@ namespace DungeonDredge.Player
         public void Move(Vector3 direction, bool sprint, bool crouch)
         {
             // Ground check
-            isGrounded = controller.isGrounded;
+            CheckGrounded();
+            
             if (isGrounded && velocity.y < 0)
             {
                 velocity.y = -2f; // Small negative to keep grounded
             }
 
-            // Handle crouching
+            // Handle crouching (visual height transition)
             HandleCrouch(crouch);
 
             // Calculate speed based on encumbrance
@@ -100,13 +107,14 @@ namespace DungeonDredge.Player
             float targetSpeed = baseWalkSpeed * speedMultiplier;
 
             // Apply sprint or crouch multipliers
+            // Use crouch INPUT directly for speed (not isCrouching state which waits for height transition)
             IsSprinting = false;
-            if (sprint && CanSprint && !isCrouching)
+            if (sprint && CanSprint && !crouch)
             {
                 targetSpeed *= sprintMultiplier;
                 IsSprinting = true;
             }
-            else if (isCrouching)
+            else if (crouch)
             {
                 targetSpeed *= crouchMultiplier;
             }
@@ -135,10 +143,29 @@ namespace DungeonDredge.Player
             }
         }
 
+        private void CheckGrounded()
+        {
+            // Center of the bottom sphere of the capsule
+            Vector3 spherePosition = transform.position + Vector3.down * (controller.height / 2f - controller.radius + groundCheckOffset);
+            
+            // If CharacterController is confident, trust it first, otherwise do our own check
+            if (controller.isGrounded)
+            {
+                isGrounded = true;
+                return;
+            }
+            
+            // Fallback sphere cast for edges/slopes
+            isGrounded = Physics.CheckSphere(spherePosition, groundCheckRadius, groundMask, QueryTriggerInteraction.Ignore);
+        }
+
         public void TryJump()
         {
             if (isGrounded && !isCrouching && currentTier != EncumbranceTier.Snail)
             {
+                // Force Unground
+                isGrounded = false;
+                
                 // Reduce jump based on encumbrance
                 float jumpMultiplier = encumbranceCurve.Evaluate(currentWeightRatio);
                 velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity) * jumpMultiplier;
@@ -150,16 +177,18 @@ namespace DungeonDredge.Player
 
         private void HandleCrouch(bool wantsCrouch)
         {
+            // Set crouch state directly from input (toggle)
+            // This prevents animation flickering from height threshold oscillation
+            isCrouching = wantsCrouch;
+            
             float targetHeight = wantsCrouch ? crouchHeight : normalHeight;
             
-            // Smoothly transition height
+            // Smoothly transition height for visuals/collision
             currentHeight = Mathf.Lerp(currentHeight, targetHeight, crouchTransitionSpeed * Time.deltaTime);
             controller.height = currentHeight;
             
             // Adjust center
             controller.center = new Vector3(0, currentHeight / 2f, 0);
-
-            isCrouching = currentHeight < (normalHeight + crouchHeight) / 2f;
         }
 
         private void HandleFootsteps()

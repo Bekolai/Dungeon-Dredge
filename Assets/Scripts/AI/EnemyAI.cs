@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using DungeonDredge.Core;
 using DungeonDredge.Inventory;
+using DungeonDredge.Enemies;
 
 namespace DungeonDredge.AI
 {
@@ -15,7 +16,13 @@ namespace DungeonDredge.AI
     [RequireComponent(typeof(NavMeshAgent))]
     public class EnemyAI : MonoBehaviour, INoiseListener, IEnemyState
     {
-        [Header("Enemy Info")]
+        [Header("Enemy Data (Primary Configuration)")]
+        [SerializeField] private EnemyData enemyData;
+        [Tooltip("Override the dungeon rank for scaling (uses enemyData.minimumRank if not set)")]
+        [SerializeField] private DungeonRank dungeonRankOverride = DungeonRank.F;
+        [SerializeField] private bool useDungeonRankOverride = false;
+
+        [Header("Enemy Info (Auto-filled from EnemyData)")]
         [SerializeField] private string enemyName = "Enemy";
         [SerializeField] private DungeonRank rank = DungeonRank.F;
         [SerializeField] private EnemyBehaviorType behaviorType = EnemyBehaviorType.Flee;
@@ -44,6 +51,12 @@ namespace DungeonDredge.AI
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color alertedColor = Color.yellow;
         [SerializeField] private Color aggressiveColor = Color.red;
+
+        // Animation components
+        private Animator animator;
+        private EnemyAnimator enemyAnimator;
+        private EnemyAnimatorAdvanced advancedAnimator;
+        private HealthComponent healthComponent;
 
         // Components
         private NavMeshAgent agent;
@@ -86,11 +99,19 @@ namespace DungeonDredge.AI
             agent = GetComponent<NavMeshAgent>();
             agent.speed = walkSpeed;
 
+            InitializeAnimationComponents();
             InitializeStateMachine();
         }
 
         private void Start()
         {
+            // Auto-initialize from EnemyData if assigned
+            if (enemyData != null)
+            {
+                DungeonRank effectiveRank = useDungeonRankOverride ? dungeonRankOverride : enemyData.minimumRank;
+                Initialize(enemyData, effectiveRank);
+            }
+
             // Register with stealth manager
             StealthManager.Instance?.RegisterEnemy(gameObject);
         }
@@ -114,6 +135,84 @@ namespace DungeonDredge.AI
             stateMachine.Update();
         }
 
+        /// <summary>
+        /// Initialize from EnemyData ScriptableObject.
+        /// Called automatically on Start if enemyData is assigned, or manually when spawning from pool.
+        /// </summary>
+        public void Initialize(EnemyData data, DungeonRank dungeonRank)
+        {
+            if (data == null)
+            {
+                Debug.LogWarning($"[EnemyAI] {gameObject.name}: No EnemyData provided for initialization!");
+                return;
+            }
+
+            enemyData = data;
+
+            // Apply basic info
+            enemyName = data.enemyName;
+            rank = data.minimumRank;
+            behaviorType = data.behaviorType;
+
+            // Apply stats (scaled by dungeon rank)
+            walkSpeed = data.walkSpeed;
+            chaseSpeed = data.chaseSpeed;
+            attackRange = data.attackRange;
+            attackCooldown = data.attackCooldown;
+            attackDamage = data.GetScaledDamage(dungeonRank);
+
+            // Apply detection
+            sightRange = data.sightRange;
+            sightAngle = data.sightAngle;
+            hearingThreshold = data.hearingThreshold;
+
+            // Apply NavMeshAgent speed
+            if (agent != null)
+            {
+                agent.speed = walkSpeed;
+            }
+
+            // Apply animator controller - prioritize animationData, then animatorOverride
+            if (animator != null)
+            {
+                if (data.animationData != null && data.animationData.AnimatorController != null)
+                {
+                    animator.runtimeAnimatorController = data.animationData.AnimatorController;
+                }
+                else if (data.animatorOverride != null)
+                {
+                    animator.runtimeAnimatorController = data.animatorOverride;
+                }
+            }
+
+            // Initialize advanced animator if animation data is available
+            if (advancedAnimator != null && data.animationData != null)
+            {
+                advancedAnimator.Initialize(data.animationData);
+                Debug.Log($"[EnemyAI] {enemyName}: Initialized EnemyAnimatorAdvanced with {data.animationData.name}");
+            }
+            else if (enemyAnimator != null)
+            {
+                // Simple animator - just needs the controller which we already set
+                Debug.Log($"[EnemyAI] {enemyName}: Using simple EnemyAnimator");
+            }
+
+            // Apply model scale
+            if (data.modelScale != 1f)
+            {
+                transform.localScale = Vector3.one * data.modelScale;
+            }
+
+            // Initialize health component if available
+            if (healthComponent != null)
+            {
+                float scaledHealth = data.GetScaledHealth(dungeonRank);
+                healthComponent.ModifyMaxHealth(scaledHealth - healthComponent.MaxHealth);
+                healthComponent.Revive();
+            }
+
+            Debug.Log($"[EnemyAI] {enemyName} initialized: Rank={dungeonRank}, Behavior={behaviorType}, HP={data.GetScaledHealth(dungeonRank)}, Damage={attackDamage}");
+        }
         private void InitializeStateMachine()
         {
             stateMachine = new AIStateMachine(this);
@@ -220,7 +319,10 @@ namespace DungeonDredge.AI
             // Simple damage - in a full implementation, use a health system
             Debug.Log($"{enemyName} attacks for {attackDamage} damage!");
 
-            // Could trigger player damage event here
+              if (advancedAnimator != null)
+            advancedAnimator.PlayRandomAttack();
+        else if (enemyAnimator != null)
+            enemyAnimator.PlayAttack();
         }
 
         public void TakeDamage(float damage)
@@ -324,6 +426,72 @@ namespace DungeonDredge.AI
         {
             SetInvestigationTarget(position);
             stateMachine.SetState<InvestigateState>();
+        }
+
+        #endregion
+
+        #region Animation Methods
+
+        /// <summary>
+        /// Play attack animation using the appropriate animator.
+        /// </summary>
+        public void PlayAttackAnimation()
+        {
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.PlayRandomAttack();
+            }
+            else if (enemyAnimator != null)
+            {
+                enemyAnimator.PlayAttack();
+            }
+        }
+
+        /// <summary>
+        /// Play stunned/hit reaction animation.
+        /// </summary>
+        public void PlayStunnedAnimation()
+        {
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.PlayHitReaction();
+            }
+            else if (enemyAnimator != null)
+            {
+                enemyAnimator.PlayHitReaction();
+            }
+        }
+
+        /// <summary>
+        /// Play death animation.
+        /// </summary>
+        public void PlayDeathAnimation()
+        {
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.PlayDeath();
+            }
+            else if (enemyAnimator != null)
+            {
+                enemyAnimator.PlayDeath();
+            }
+        }
+
+        /// <summary>
+        /// Initialize animation components. Call after setting up the enemy.
+        /// </summary>
+        private void InitializeAnimationComponents()
+        {
+            animator = GetComponent<Animator>();
+            if (animator == null) animator = GetComponentInChildren<Animator>();
+
+            enemyAnimator = GetComponent<EnemyAnimator>();
+            if (enemyAnimator == null) enemyAnimator = GetComponentInChildren<EnemyAnimator>();
+
+            advancedAnimator = GetComponent<EnemyAnimatorAdvanced>();
+            if (advancedAnimator == null) advancedAnimator = GetComponentInChildren<EnemyAnimatorAdvanced>();
+
+            healthComponent = GetComponent<HealthComponent>();
         }
 
         #endregion

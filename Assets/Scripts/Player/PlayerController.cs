@@ -28,6 +28,7 @@ namespace DungeonDredge.Player
 
         // Input values
         private Vector2 moveInput;
+        public Vector2 MoveInput => moveInput;
         private Vector2 lookInput;
         private bool sprintInput;
         private bool crouchInput;
@@ -41,6 +42,12 @@ namespace DungeonDredge.Player
         private InputAction crouchAction;
         private InputAction interactAction;
         private InputAction jumpAction;
+        private InputAction shoveAction;
+
+        // Events
+        public event System.Action OnJump;
+        public event System.Action OnShove;
+        public event System.Action OnInteractTriggered;
 
         // Components
         private CharacterController characterController;
@@ -74,6 +81,7 @@ namespace DungeonDredge.Player
             crouchAction = playerActionMap.FindAction("Crouch");
             interactAction = playerActionMap.FindAction("Interact");
             jumpAction = playerActionMap.FindAction("Jump");
+            shoveAction = playerActionMap.FindAction("Shove");
         }
 
         private void OnEnable()
@@ -100,8 +108,8 @@ namespace DungeonDredge.Player
             }
             if (crouchAction != null)
             {
-                crouchAction.performed += OnCrouch;
-                crouchAction.canceled += OnCrouch;
+                // Use started instead of performed - fires only once on button press
+                crouchAction.started += OnCrouch;
             }
             if (interactAction != null)
             {
@@ -109,7 +117,11 @@ namespace DungeonDredge.Player
             }
             if (jumpAction != null)
             {
-                jumpAction.performed += OnJump;
+                jumpAction.performed += OnJumpInput;
+            }
+            if (shoveAction != null)
+            {
+                shoveAction.performed += OnShoveInput;
             }
         }
 
@@ -132,8 +144,7 @@ namespace DungeonDredge.Player
             }
             if (crouchAction != null)
             {
-                crouchAction.performed -= OnCrouch;
-                crouchAction.canceled -= OnCrouch;
+                crouchAction.started -= OnCrouch;
             }
             if (interactAction != null)
             {
@@ -141,7 +152,11 @@ namespace DungeonDredge.Player
             }
             if (jumpAction != null)
             {
-                jumpAction.performed -= OnJump;
+                jumpAction.performed -= OnJumpInput;
+            }
+            if (shoveAction != null)
+            {
+                shoveAction.performed -= OnShoveInput;
             }
             
             playerActionMap?.Disable();
@@ -209,7 +224,8 @@ namespace DungeonDredge.Player
 
         private void OnCrouch(InputAction.CallbackContext context)
         {
-            crouchInput = context.ReadValueAsButton();
+            // Toggle crouch - using 'started' event ensures this only fires once per press
+            crouchInput = !crouchInput;
         }
 
         private void OnInteract(InputAction.CallbackContext context)
@@ -217,9 +233,18 @@ namespace DungeonDredge.Player
             TryInteract();
         }
 
-        private void OnJump(InputAction.CallbackContext context)
+        private void OnJumpInput(InputAction.CallbackContext context)
         {
-            playerMovement.TryJump();
+            if (playerMovement.IsGrounded && !playerMovement.IsCrouching) // Basic check before firing event/jump
+            {
+                OnJump?.Invoke();
+                playerMovement.TryJump();
+            }
+        }
+
+        private void OnShoveInput(InputAction.CallbackContext context)
+        {
+            TryShove();
         }
 
         #endregion
@@ -232,8 +257,18 @@ namespace DungeonDredge.Player
             if (Physics.Raycast(ray, out RaycastHit hit, interactionRange, interactionMask))
             {
                 IInteractable interactable = hit.collider.GetComponent<IInteractable>();
-                interactable?.Interact(this);
+                if (interactable != null)
+                {
+                    OnInteractTriggered?.Invoke();
+                    interactable.Interact(this);
+                }
             }
+        }
+
+        private void TryShove()
+        {
+            OnShove?.Invoke();
+            // Future logic for shoving physics or hit detection can go here
         }
 
         public void SetMouseSensitivity(float sensitivity)

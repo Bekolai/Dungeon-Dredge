@@ -1,6 +1,6 @@
 using UnityEngine;
 using DungeonDredge.Inventory;
-
+using DungeonDredge.Enemies;
 namespace DungeonDredge.AI
 {
     [CreateAssetMenu(fileName = "NewEnemy", menuName = "DungeonDredge/Enemy Data")]
@@ -31,12 +31,18 @@ namespace DungeonDredge.AI
         public float attackCooldown = 1.5f;
         public float attackDamage = 10f;
 
-        [Header("Prefab")]
+        [Header("Prefab & Visual")]
         public GameObject prefab;
-
-        [Header("Visual")]
         public Sprite icon;
         public Color tintColor = Color.white;
+        [Tooltip("Scale multiplier applied to the prefab")]
+        public float modelScale = 1f;
+
+        [Header("Animation")]
+        [Tooltip("Override animator controller (optional)")]
+        public RuntimeAnimatorController animatorOverride;
+        [Tooltip("Advanced animation configuration (for creatures with many animations)")]
+        public EnemyAnimationData animationData;
 
         [Header("Audio")]
         public AudioClip[] idleSounds;
@@ -45,6 +51,28 @@ namespace DungeonDredge.AI
 
         [Header("Drops")]
         public ItemDropChance[] itemDrops;
+
+        [Header("Scaling Curves")]
+        [Tooltip("How health scales over dungeon rank (X = rank index 0-6, Y = multiplier)")]
+        public AnimationCurve healthScaling = AnimationCurve.Linear(0f, 1f, 6f, 3f);
+        [Tooltip("How damage scales over dungeon rank")]
+        public AnimationCurve damageScaling = AnimationCurve.Linear(0f, 1f, 6f, 2.5f);
+
+        /// <summary>
+        /// Get scaled health based on dungeon rank.
+        /// </summary>
+        public float GetScaledHealth(DungeonRank dungeonRank)
+        {
+            return health * healthScaling.Evaluate((int)dungeonRank);
+        }
+
+        /// <summary>
+        /// Get scaled damage based on dungeon rank.
+        /// </summary>
+        public float GetScaledDamage(DungeonRank dungeonRank)
+        {
+            return attackDamage * damageScaling.Evaluate((int)dungeonRank);
+        }
 
         private void OnValidate()
         {
