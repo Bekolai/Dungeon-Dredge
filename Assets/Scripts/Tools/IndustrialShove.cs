@@ -3,6 +3,7 @@ using DungeonDredge.AI;
 
 namespace DungeonDredge.Tools
 {
+    [System.Obsolete("Shove mechanic has been moved to PlayerController. This script is deprecated.")]
     public class IndustrialShove : ToolBase
     {
         [Header("Shove Settings")]

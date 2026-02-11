@@ -5,12 +5,11 @@ namespace DungeonDredge.Dungeon
 {
     public enum RoomType
     {
-        Empty,
-        Spawn,
-        Loot,
-        Enemy,
-        Boss,
-        Extraction
+        Empty,      // Basic room with nothing special
+        Portal,     // Spawn AND extraction point (entrance/exit)
+        Loot,       // Contains treasure
+        Enemy,      // Contains enemies
+        Boss        // Boss room with high-value loot (replaces extraction)
     }
 
     public enum DoorDirection

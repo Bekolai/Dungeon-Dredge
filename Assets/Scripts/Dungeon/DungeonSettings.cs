@@ -1,5 +1,8 @@
 using UnityEngine;
 using DungeonDredge.Inventory;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace DungeonDredge.Dungeon
 {
@@ -12,9 +15,11 @@ namespace DungeonDredge.Dungeon
         [Header("Grid Settings")]
         [Tooltip("Size of the dungeon grid in rooms")]
         public Vector2Int gridSize = new Vector2Int(5, 5);
-        [Tooltip("Physical size of each room in units")]
+        [Tooltip("Grid cell size - spacing between room centers")]
         public Vector2 roomSize = new Vector2(20f, 20f);
-        [Tooltip("Width of corridors")]
+        [Tooltip("Actual room prefab size (smaller than grid cell to leave gaps for corridors)")]
+        public float roomActualSize = 16f;
+        [Tooltip("Width of corridors (should match gap between rooms)")]
         public float corridorWidth = 4f;
 
         [Header("Room Counts")]
@@ -46,17 +51,72 @@ namespace DungeonDredge.Dungeon
         public Color ambientColor = Color.gray;
         public float ambientIntensity = 0.5f;
 
+        [Header("Room Theme (Decorations)")]
+        [Tooltip("Theme used for randomized room decorations")]
+        public RoomTheme roomTheme;
+        [Tooltip("Additional themes that can be mixed in for variety")]
+        public RoomTheme[] additionalThemes;
+
         [Header("Room Prefabs")]
-        public GameObject[] spawnRoomPrefabs;
+        [Tooltip("Empty rooms - contain nothing")]
+        public GameObject[] emptyRoomPrefabs;
+        [Tooltip("Portal room - player spawns and extracts here")]
+        public GameObject[] portalRoomPrefabs;
+        [Tooltip("Loot rooms - contain treasure")]
         public GameObject[] lootRoomPrefabs;
+        [Tooltip("Enemy rooms - contain monsters")]
         public GameObject[] enemyRoomPrefabs;
-        public GameObject[] extractionRoomPrefabs;
-        public GameObject[] corridorPrefabs;
+        [Tooltip("Boss room - high value loot, challenging enemies")]
+        public GameObject[] bossRoomPrefabs;
+
+        [Header("Corridor Prefabs")]
+        [Tooltip("Straight corridors - connect 2 opposite directions (N-S or E-W)")]
+        public GameObject[] straightCorridorPrefabs;
+        [Tooltip("L-shaped corner corridors - connect 2 adjacent directions")]
+        public GameObject[] lCorridorPrefabs;
+        [Tooltip("T-junction corridors - connect 3 directions")]
+        public GameObject[] tJunctionPrefabs;
+        [Tooltip("Crossroad corridors - connect all 4 directions")]
+        public GameObject[] crossroadPrefabs;
+
+        public void EnsureRankConfiguration()
+        {
+            if (roomTheme == null)
+            {
+                roomTheme = LoadDefaultThemeForRank(rank);
+            }
+
+            EnsureDefaultPrefabs();
+        }
 
         public static DungeonSettings GetSettingsForRank(DungeonRank rank)
         {
-            // Return default settings based on rank
-            // In practice, these would be loaded from assets
+            // Try to load from Resources first (preferred - has prefabs assigned)
+            string resourcePath = $"DungeonSettings/DungeonSettings_{rank}";
+            DungeonSettings loaded = Resources.Load<DungeonSettings>(resourcePath);
+            if (loaded != null)
+            {
+                loaded.EnsureRankConfiguration();
+                Debug.Log($"[DungeonSettings] Loaded settings for rank {rank} from Resources.");
+                return loaded;
+            }
+
+#if UNITY_EDITOR
+            // Editor fallback: load from regular asset path.
+            string assetPath = $"Assets/ScriptableObjects/Dungeons/DungeonSettings_Rank{rank}.asset";
+            loaded = AssetDatabase.LoadAssetAtPath<DungeonSettings>(assetPath);
+            if (loaded != null)
+            {
+                loaded.EnsureRankConfiguration();
+                Debug.Log($"[DungeonSettings] Loaded settings for rank {rank} from asset path.");
+                return loaded;
+            }
+#endif
+
+            // Fallback: create runtime settings (WARNING: no prefabs!)
+            Debug.LogWarning($"[DungeonSettings] No DungeonSettings asset found at 'Resources/{resourcePath}'. " +
+                "Using runtime defaults WITHOUT room prefabs. Create DungeonSettings assets for proper generation.");
+            
             DungeonSettings settings = CreateInstance<DungeonSettings>();
             settings.rank = rank;
 
@@ -102,7 +162,153 @@ namespace DungeonDredge.Dungeon
                     break;
             }
 
+            settings.EnsureRankConfiguration();
+
             return settings;
+        }
+
+        private static RoomTheme LoadDefaultThemeForRank(DungeonRank rank)
+        {
+            string themeAssetName = rank switch
+            {
+                DungeonRank.F => "RoomTheme_StoneDungeon",
+                DungeonRank.E => "RoomTheme_DarkDungeon",
+                DungeonRank.D => "RoomTheme_CaveSystem",
+                _ => "RoomTheme_Necropolis"
+            };
+
+            RoomTheme theme = Resources.Load<RoomTheme>($"Themes/{themeAssetName}");
+            if (theme != null)
+                return theme;
+
+#if UNITY_EDITOR
+            string assetPath = $"Assets/ScriptableObjects/Themes/{themeAssetName}.asset";
+            theme = AssetDatabase.LoadAssetAtPath<RoomTheme>(assetPath);
+            if (theme != null)
+                return theme;
+#endif
+
+            Debug.LogWarning($"[DungeonSettings] Could not auto-assign theme for rank {rank}. Expected {themeAssetName}.");
+            return null;
+        }
+
+        private void EnsureDefaultPrefabs()
+        {
+            if (emptyRoomPrefabs == null || emptyRoomPrefabs.Length == 0)
+            {
+                emptyRoomPrefabs = LoadPrefabCandidates(
+                    "DungeonRooms/Stone/Room_Empty_Stone",
+                    "DungeonRooms/Room_Empty_Template",
+                    "Assets/Prefabs/DungeonRooms/Stone/Room_Empty_Stone.prefab",
+                    "Assets/Prefabs/DungeonRooms/Room_Empty_Template.prefab");
+            }
+
+            if (portalRoomPrefabs == null || portalRoomPrefabs.Length == 0)
+            {
+                portalRoomPrefabs = LoadPrefabCandidates(
+                    "DungeonRooms/Stone/Room_Portal_Stone",
+                    "DungeonRooms/Room_Portal_Template",
+                    "Assets/Prefabs/DungeonRooms/Stone/Room_Portal_Stone.prefab",
+                    "Assets/Prefabs/DungeonRooms/Room_Portal_Template.prefab");
+            }
+
+            if (lootRoomPrefabs == null || lootRoomPrefabs.Length == 0)
+            {
+                lootRoomPrefabs = LoadPrefabCandidates(
+                    "DungeonRooms/Stone/Room_Loot_Stone",
+                    "DungeonRooms/Room_Loot_Template",
+                    "Assets/Prefabs/DungeonRooms/Stone/Room_Loot_Stone.prefab",
+                    "Assets/Prefabs/DungeonRooms/Room_Loot_Template.prefab");
+            }
+
+            if (enemyRoomPrefabs == null || enemyRoomPrefabs.Length == 0)
+            {
+                enemyRoomPrefabs = LoadPrefabCandidates(
+                    "DungeonRooms/Stone/Room_Enemy_Stone",
+                    "DungeonRooms/Room_Enemy_Template",
+                    "Assets/Prefabs/DungeonRooms/Stone/Room_Enemy_Stone.prefab",
+                    "Assets/Prefabs/DungeonRooms/Room_Enemy_Template.prefab");
+            }
+
+            if (bossRoomPrefabs == null || bossRoomPrefabs.Length == 0)
+            {
+                bossRoomPrefabs = LoadPrefabCandidates(
+                    "DungeonRooms/Stone/Room_Boss_Stone",
+                    "DungeonRooms/Room_Boss_Template",
+                    "Assets/Prefabs/DungeonRooms/Stone/Room_Boss_Stone.prefab",
+                    "Assets/Prefabs/DungeonRooms/Room_Boss_Template.prefab");
+            }
+
+            if (straightCorridorPrefabs == null || straightCorridorPrefabs.Length == 0)
+            {
+                straightCorridorPrefabs = LoadPrefabCandidates(
+                    "DungeonCorridors/Corridor_Straight",
+                    "DungeonRooms/Corridor_Template",
+                    "Assets/Prefabs/DungeonCorridors/Corridor_Straight.prefab",
+                    "Assets/Prefabs/DungeonRooms/Corridor_Template.prefab");
+            }
+
+            if (lCorridorPrefabs == null || lCorridorPrefabs.Length == 0)
+            {
+                lCorridorPrefabs = LoadPrefabCandidates(
+                    "DungeonCorridors/Corridor_LCorner",
+                    null,
+                    "Assets/Prefabs/DungeonCorridors/Corridor_LCorner.prefab",
+                    null);
+            }
+
+            if (tJunctionPrefabs == null || tJunctionPrefabs.Length == 0)
+            {
+                tJunctionPrefabs = LoadPrefabCandidates(
+                    "DungeonCorridors/Corridor_TJunction",
+                    null,
+                    "Assets/Prefabs/DungeonCorridors/Corridor_TJunction.prefab",
+                    null);
+            }
+
+            if (crossroadPrefabs == null || crossroadPrefabs.Length == 0)
+            {
+                crossroadPrefabs = LoadPrefabCandidates(
+                    "DungeonCorridors/Corridor_Crossroads",
+                    null,
+                    "Assets/Prefabs/DungeonCorridors/Corridor_Crossroads.prefab",
+                    null);
+            }
+        }
+
+        private GameObject[] LoadPrefabCandidates(
+            string resourcesPathPrimary,
+            string resourcesPathSecondary,
+            string editorAssetPathPrimary,
+            string editorAssetPathSecondary)
+        {
+            var results = new System.Collections.Generic.List<GameObject>();
+
+            if (!string.IsNullOrEmpty(resourcesPathPrimary))
+            {
+                GameObject prefab = Resources.Load<GameObject>(resourcesPathPrimary);
+                if (prefab != null) results.Add(prefab);
+            }
+            if (!string.IsNullOrEmpty(resourcesPathSecondary))
+            {
+                GameObject prefab = Resources.Load<GameObject>(resourcesPathSecondary);
+                if (prefab != null) results.Add(prefab);
+            }
+
+#if UNITY_EDITOR
+            if (!string.IsNullOrEmpty(editorAssetPathPrimary))
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(editorAssetPathPrimary);
+                if (prefab != null && !results.Contains(prefab)) results.Add(prefab);
+            }
+            if (!string.IsNullOrEmpty(editorAssetPathSecondary))
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(editorAssetPathSecondary);
+                if (prefab != null && !results.Contains(prefab)) results.Add(prefab);
+            }
+#endif
+
+            return results.ToArray();
         }
     }
 }

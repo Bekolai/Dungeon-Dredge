@@ -133,6 +133,12 @@ namespace DungeonDredge.Dungeon
             // Clean up
             generator.ClearDungeon();
 
+            // Save progress
+            if (SaveSystem.Instance != null)
+            {
+                SaveSystem.Instance.Save();
+            }
+
             // Return to village
             if (GameManager.Instance != null)
             {

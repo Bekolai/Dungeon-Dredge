@@ -90,6 +90,7 @@ namespace DungeonDredge.AI
         public bool IsStunned => isStunned;
         public DungeonRank Rank => rank;
         public string EnemyName => enemyName;
+        public EnemyData EnemyData => enemyData;
 
         // Events
         public System.Action OnDeath;

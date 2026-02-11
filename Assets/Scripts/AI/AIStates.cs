@@ -12,7 +12,8 @@ namespace DungeonDredge.AI
 
         public override void Enter()
         {
-            enemy.Agent.isStopped = true;
+            if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
+                enemy.Agent.isStopped = true;
             idleTime = 0f;
             idleDuration = Random.Range(2f, 5f);
         
@@ -30,7 +31,8 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.isStopped = false;
+            if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
+                enemy.Agent.isStopped = false;
         }
 
         public override void OnNoiseHeard(Vector3 position, float intensity)
