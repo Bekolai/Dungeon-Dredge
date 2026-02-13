@@ -1,116 +1,232 @@
-using UnityEngine;
+using System.Collections.Generic;
 using DungeonDredge.Core;
 using DungeonDredge.Player;
+using UnityEngine;
+using UnityEngine.AI;
 
 namespace DungeonDredge.Audio
 {
     /// <summary>
-    /// Realistic footstep system that spawns audio at foot position with
-    /// random volume variation and no consecutive clip repetition.
+    /// Shared footstep audio system for both player and enemies.
+    /// Supports movement-timer and animation-event triggering.
     /// </summary>
     public class FootstepSystem : MonoBehaviour
     {
+        public enum FootstepActorType
+        {
+            AutoDetect,
+            Player,
+            Enemy
+        }
+
+        [System.Serializable]
+        public class SurfaceSoundBinding
+        {
+            public SurfaceType surfaceType = SurfaceType.Stone;
+            public FootstepSoundSetAsset soundSetAsset;
+        }
+
+        [Header("Actor")]
+        [SerializeField] private FootstepActorType actorType = FootstepActorType.AutoDetect;
+
         [Header("References")]
         [SerializeField] private PlayerMovement playerMovement;
+        [SerializeField] private NavMeshAgent navMeshAgent;
+        [SerializeField] private CharacterController characterController;
         [SerializeField] private Transform leftFoot;
         [SerializeField] private Transform rightFoot;
 
-        [Header("Footstep Sounds (ScriptableObject Assets)")]
-        [SerializeField] private FootstepSoundSetAsset defaultSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset stoneSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset metalSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset dirtSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset waterSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset grassSoundsAsset;
-        [SerializeField] private FootstepSoundSetAsset gravelSoundsAsset;
+        [Header("Triggering")]
+        [Tooltip("If enabled, footsteps can be played automatically by movement speed over time.")]
+        [SerializeField] private bool useMovementTimer = false;
+        [Tooltip("Allow external calls (animation events) to trigger footsteps.")]
+        [SerializeField] private bool allowExternalTriggers = true;
+        [Tooltip("For animation events, require the selected foot to be near ground before playing.")]
+        [SerializeField] private bool requireGroundContactForExternalTriggers = true;
+        [SerializeField] private float externalTriggerGroundDistance = 0.3f;
 
-        // Runtime cached sound sets
-        private FootstepSoundSet defaultSounds;
-        private FootstepSoundSet stoneSounds;
-        private FootstepSoundSet metalSounds;
-        private FootstepSoundSet dirtSounds;
-        private FootstepSoundSet waterSounds;
-        private FootstepSoundSet grassSounds;
-        private FootstepSoundSet gravelSounds;
+        [Header("Surface Sound Sets")]
+        [SerializeField] private FootstepSoundSetAsset defaultSoundsAsset;
+        [SerializeField] private SurfaceSoundBinding[] surfaceSoundSets;
 
         [Header("Timing")]
         [SerializeField] private float baseStepInterval = 0.5f;
-        [SerializeField] private float sprintIntervalMultiplier = 0.6f;
-        [SerializeField] private float crouchIntervalMultiplier = 1.5f;
+        [SerializeField] private float sprintIntervalMultiplier = 0.65f;
+        [SerializeField] private float crouchIntervalMultiplier = 1.45f;
+        [SerializeField] private float referenceMoveSpeed = 5f;
+        [SerializeField] private float minSpeedToStep = 0.2f;
 
         [Header("Volume Settings")]
+        [SerializeField] private float enemyBaseVolume = 0.55f;
         [SerializeField] private float lightVolumeBase = 0.3f;
         [SerializeField] private float mediumVolumeBase = 0.5f;
         [SerializeField] private float heavyVolumeBase = 0.8f;
         [SerializeField] private float snailVolumeBase = 1.0f;
-        [Tooltip("Random volume variation (±percentage)")]
-        [SerializeField, Range(0f, 0.3f)] private float volumeVariation = 0.15f;
+        [SerializeField] private float crouchVolumeMultiplier = 0.4f;
+        [SerializeField] private float crouchAdditionalVolumeMultiplier = 0.8f;
+        [SerializeField] private float sprintVolumeMultiplier = 1.15f;
+        [SerializeField] private Vector2 randomVolumeRange = new Vector2(0.9f, 1.1f);
 
         [Header("Pitch Settings")]
-        [SerializeField] private float basePitch = 1.0f;
-        [Tooltip("Random pitch variation (±amount)")]
-        [SerializeField, Range(0f, 0.2f)] private float pitchVariation = 0.1f;
+        [SerializeField] private Vector2 randomPitchRange = new Vector2(0.94f, 1.06f);
+        [SerializeField] private float crouchPitchMultiplier = 0.96f;
 
         [Header("3D Audio Settings")]
-        [SerializeField] private float spatialBlend = 1.0f; // 1 = full 3D
+        [SerializeField] private float spatialBlend = 1f;
         [SerializeField] private float minDistance = 1f;
         [SerializeField] private float maxDistance = 20f;
         [SerializeField] private AudioRolloffMode rolloffMode = AudioRolloffMode.Linear;
 
+        [Header("Distance Hearing Filter")]
+        [Tooltip("Additional distance-based volume filter on top of AudioSource rolloff.")]
+        [SerializeField] private bool applyDistanceVolumeFilter = true;
+        [SerializeField] private Transform listenerOverride;
+        [SerializeField] private float distanceNear = 1.5f;
+        [SerializeField] private float distanceFar = 20f;
+        [SerializeField] private AnimationCurve distanceVolumeCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
+        [Tooltip("Skip playback if final volume after distance filtering is below this value.")]
+        [SerializeField, Range(0f, 0.2f)] private float cullVolumeThreshold = 0.02f;
+
         [Header("Surface Detection")]
-        [SerializeField] private float raycastDistance = 0.5f;
+        [SerializeField] private float raycastDistance = 0.6f;
         [SerializeField] private LayerMask groundLayer;
 
         [Header("Object Pooling")]
         [SerializeField] private int audioSourcePoolSize = 8;
         [SerializeField] private GameObject audioSourcePrefab;
 
-        // State
         private float stepTimer;
-        private SurfaceType currentSurface = SurfaceType.Stone;
         private bool isLeftFoot = true;
         private int lastClipIndex = -1;
+        private SurfaceType currentSurface = SurfaceType.Stone;
+        private Vector3 lastFootHitPoint;
+
         private AudioSource[] audioSourcePool;
         private int currentPoolIndex;
 
-        // Cached hit point for foot placement
-        private Vector3 lastFootHitPoint;
+        private FootstepSoundSet defaultSounds;
+        private readonly Dictionary<SurfaceType, FootstepSoundSet> cachedSurfaceSets = new Dictionary<SurfaceType, FootstepSoundSet>();
+        private AudioListener cachedListener;
 
         private void Awake()
+        {
+            AutoAssignReferences();
+
+            if (leftFoot == null) leftFoot = transform;
+            if (rightFoot == null) rightFoot = transform;
+
+            InitializeAudioPool();
+            CacheSoundSets();
+        }
+
+        private void Update()
+        {
+            if (!useMovementTimer)
+                return;
+
+            if (!CanAutoStep())
+            {
+                stepTimer = 0f;
+                return;
+            }
+
+            stepTimer += Time.deltaTime;
+            if (stepTimer >= CalculateStepInterval())
+            {
+                stepTimer = 0f;
+                PlayFootstepInternal(isLeftFoot, true);
+            }
+        }
+
+        public void TriggerFootstep()
+        {
+            if (!allowExternalTriggers)
+                return;
+
+            PlayFootstepInternal(isLeftFoot, true);
+        }
+
+        public void TriggerLeftFootstep()
+        {
+            TriggerFootstepForFoot(true);
+        }
+
+        public void TriggerRightFootstep()
+        {
+            TriggerFootstepForFoot(false);
+        }
+
+        public void PlayLandingSound()
+        {
+            Vector3 position = DetectSurfaceAndGetPosition(isLeftFoot);
+            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface);
+            if (soundSet?.landingClips == null || soundSet.landingClips.Length == 0)
+                return;
+
+            AudioClip clip = soundSet.landingClips[Random.Range(0, soundSet.landingClips.Length)];
+            float volume = Mathf.Clamp01(GetBaseVolume() * soundSet.volumeMultiplier * 1.2f * Random.Range(randomVolumeRange.x, randomVolumeRange.y));
+            float pitch = soundSet.basePitch * Random.Range(randomPitchRange.x, randomPitchRange.y);
+            PlayAtPosition(clip, position, volume, pitch);
+        }
+
+        public void PlayScuffSound()
+        {
+            Vector3 position = DetectSurfaceAndGetPosition(isLeftFoot);
+            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface);
+            if (soundSet?.scuffClips == null || soundSet.scuffClips.Length == 0)
+                return;
+
+            AudioClip clip = soundSet.scuffClips[Random.Range(0, soundSet.scuffClips.Length)];
+            float volume = Mathf.Clamp01(GetBaseVolume() * soundSet.volumeMultiplier * 0.85f * Random.Range(randomVolumeRange.x, randomVolumeRange.y));
+            float pitch = soundSet.basePitch * Random.Range(randomPitchRange.x, randomPitchRange.y);
+            PlayAtPosition(clip, position, volume, pitch);
+        }
+
+        private void AutoAssignReferences()
         {
             if (playerMovement == null)
                 playerMovement = GetComponent<PlayerMovement>();
 
-            // Create audio source pool for 3D positioned sounds
-            InitializeAudioPool();
+            if (navMeshAgent == null)
+                navMeshAgent = GetComponent<NavMeshAgent>();
 
-            // If foot transforms not assigned, use player position
-            if (leftFoot == null) leftFoot = transform;
-            if (rightFoot == null) rightFoot = transform;
+            if (characterController == null)
+                characterController = GetComponent<CharacterController>();
 
-            // Cache sound sets from ScriptableObject assets
-            CacheSoundSets();
+            if (actorType == FootstepActorType.AutoDetect)
+            {
+                actorType = playerMovement != null ? FootstepActorType.Player : FootstepActorType.Enemy;
+            }
         }
 
         private void CacheSoundSets()
         {
-            if (defaultSoundsAsset != null) defaultSounds = defaultSoundsAsset.ToSoundSet();
-            if (stoneSoundsAsset != null) stoneSounds = stoneSoundsAsset.ToSoundSet();
-            if (metalSoundsAsset != null) metalSounds = metalSoundsAsset.ToSoundSet();
-            if (dirtSoundsAsset != null) dirtSounds = dirtSoundsAsset.ToSoundSet();
-            if (waterSoundsAsset != null) waterSounds = waterSoundsAsset.ToSoundSet();
-            if (grassSoundsAsset != null) grassSounds = grassSoundsAsset.ToSoundSet();
-            if (gravelSoundsAsset != null) gravelSounds = gravelSoundsAsset.ToSoundSet();
+            defaultSounds = defaultSoundsAsset != null ? defaultSoundsAsset.ToSoundSet() : null;
+            cachedSurfaceSets.Clear();
+
+            if (surfaceSoundSets == null)
+                return;
+
+            for (int i = 0; i < surfaceSoundSets.Length; i++)
+            {
+                SurfaceSoundBinding binding = surfaceSoundSets[i];
+                if (binding == null || binding.soundSetAsset == null)
+                    continue;
+
+                cachedSurfaceSets[binding.surfaceType] = binding.soundSetAsset.ToSoundSet();
+            }
         }
 
         private void InitializeAudioPool()
         {
+            if (audioSourcePoolSize < 1)
+                audioSourcePoolSize = 1;
+
             audioSourcePool = new AudioSource[audioSourcePoolSize];
-            
+
             for (int i = 0; i < audioSourcePoolSize; i++)
             {
                 GameObject audioObj;
-                
                 if (audioSourcePrefab != null)
                 {
                     audioObj = Instantiate(audioSourcePrefab, transform);
@@ -125,151 +241,179 @@ namespace DungeonDredge.Audio
                 if (source == null)
                     source = audioObj.AddComponent<AudioSource>();
 
-                // Configure for 3D spatial audio
                 source.playOnAwake = false;
                 source.loop = false;
                 source.spatialBlend = spatialBlend;
                 source.minDistance = minDistance;
                 source.maxDistance = maxDistance;
                 source.rolloffMode = rolloffMode;
-                source.outputAudioMixerGroup = null; // Can be assigned in inspector
-
                 audioSourcePool[i] = source;
             }
         }
 
-        private void Update()
+        private bool CanAutoStep()
         {
-            if (playerMovement == null || !playerMovement.IsMoving || !playerMovement.IsGrounded)
+            if (actorType == FootstepActorType.Player && playerMovement != null)
             {
-                stepTimer = 0f;
-                return;
+                return playerMovement.IsGrounded && playerMovement.IsMoving && playerMovement.CurrentSpeed > minSpeedToStep;
             }
 
-            // Calculate step interval based on movement state
-            float interval = CalculateStepInterval();
+            float speed = GetCurrentSpeed();
+            return speed > minSpeedToStep && IsGroundedForNonPlayer();
+        }
 
-            stepTimer += Time.deltaTime;
-
-            if (stepTimer >= interval)
-            {
-                stepTimer = 0f;
-                PlayFootstep();
-            }
+        private bool IsGroundedForNonPlayer()
+        {
+            Vector3 origin = transform.position + Vector3.up * 0.1f;
+            return Physics.Raycast(origin, Vector3.down, raycastDistance, GetGroundMask(), QueryTriggerInteraction.Ignore);
         }
 
         private float CalculateStepInterval()
         {
             float interval = baseStepInterval;
-            
-            if (playerMovement.IsSprinting)
+            float speed = GetCurrentSpeed();
+
+            if (actorType == FootstepActorType.Player && playerMovement != null)
             {
-                interval *= sprintIntervalMultiplier;
-            }
-            else if (playerMovement.IsCrouching)
-            {
-                interval *= crouchIntervalMultiplier;
+                if (playerMovement.IsSprinting)
+                    interval *= sprintIntervalMultiplier;
+                else if (playerMovement.IsCrouching)
+                    interval *= crouchIntervalMultiplier;
             }
 
-            // Speed-based adjustment - faster movement = shorter intervals
-            float speedRatio = playerMovement.CurrentSpeed / 5f;
-            interval /= Mathf.Max(0.5f, speedRatio);
-
-            return interval;
+            float speedRatio = speed / Mathf.Max(0.1f, referenceMoveSpeed);
+            speedRatio = Mathf.Clamp(speedRatio, 0.5f, 2.5f);
+            return interval / speedRatio;
         }
 
-        private void PlayFootstep()
+        private float GetCurrentSpeed()
         {
-            // Detect surface at foot position
-            Vector3 footPosition = DetectSurfaceAndGetPosition();
+            if (actorType == FootstepActorType.Player && playerMovement != null)
+                return playerMovement.CurrentSpeed;
 
-            // Get sound set for current surface
-            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface);
-            if (soundSet == null || soundSet.footstepClips == null || soundSet.footstepClips.Length == 0)
-            {
-                soundSet = defaultSounds;
-            }
+            if (navMeshAgent != null && navMeshAgent.enabled)
+                return navMeshAgent.velocity.magnitude;
 
-            if (soundSet == null || soundSet.footstepClips == null || soundSet.footstepClips.Length == 0)
+            if (characterController != null)
+                return characterController.velocity.magnitude;
+
+            return 0f;
+        }
+
+        private void TriggerFootstepForFoot(bool useLeftFoot)
+        {
+            if (!allowExternalTriggers)
                 return;
 
-            // Get random clip (avoiding repetition)
-            AudioClip clip = GetRandomClipNoRepeat(soundSet.footstepClips);
-            if (clip == null) return;
-
-            // Calculate volume with random variation
-            float baseVolume = GetVolumeForTier(playerMovement.CurrentTier);
-            
-            // Reduce for crouching
-            if (playerMovement.IsCrouching)
+            if (requireGroundContactForExternalTriggers &&
+                !TryDetectSurfaceAndGetPosition(useLeftFoot, externalTriggerGroundDistance, out _))
             {
-                baseVolume *= 0.4f;
+                return;
             }
 
-            // Apply random variation
-            float volumeVariationAmount = baseVolume * volumeVariation;
-            float finalVolume = baseVolume + Random.Range(-volumeVariationAmount, volumeVariationAmount);
-            finalVolume = Mathf.Clamp01(finalVolume);
-
-            // Calculate random pitch
-            float finalPitch = basePitch + Random.Range(-pitchVariation, pitchVariation);
-
-            // Play at foot position
-            PlayAtPosition(clip, footPosition, finalVolume, finalPitch);
-
-            // Alternate feet
-            isLeftFoot = !isLeftFoot;
+            PlayFootstepInternal(useLeftFoot, false);
         }
 
-        private Vector3 DetectSurfaceAndGetPosition()
+        private void PlayFootstepInternal(bool useLeftFoot, bool toggleAfterPlay)
         {
-            Transform currentFoot = isLeftFoot ? leftFoot : rightFoot;
-            Vector3 rayOrigin = currentFoot.position + Vector3.up * 0.1f;
+            Vector3 footPosition = DetectSurfaceAndGetPosition(useLeftFoot);
+            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface);
+            if (soundSet?.footstepClips == null || soundSet.footstepClips.Length == 0)
+                return;
 
-            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, raycastDistance, groundLayer))
+            AudioClip clip = GetRandomClipNoRepeat(soundSet.footstepClips);
+            if (clip == null)
+                return;
+
+            float finalVolume = Mathf.Clamp01(GetBaseVolume() * soundSet.volumeMultiplier * Random.Range(randomVolumeRange.x, randomVolumeRange.y));
+            float finalPitch = soundSet.basePitch * Random.Range(randomPitchRange.x, randomPitchRange.y);
+
+            if (actorType == FootstepActorType.Player && playerMovement != null && playerMovement.IsCrouching)
             {
-                lastFootHitPoint = hit.point;
-
-                // Check for surface type component first
-                var surfaceTag = hit.collider.GetComponent<SurfaceTag>();
-                if (surfaceTag != null)
-                {
-                    currentSurface = surfaceTag.SurfaceType;
-                }
-                else
-                {
-                    // Check for physical material
-                    if (hit.collider.sharedMaterial != null)
-                    {
-                        currentSurface = GetSurfaceFromPhysicMaterial(hit.collider.sharedMaterial);
-                    }
-                    else
-                    {
-                        // Fallback to tag-based detection
-                        currentSurface = hit.collider.tag switch
-                        {
-                            "Metal" => SurfaceType.Metal,
-                            "Dirt" => SurfaceType.Dirt,
-                            "Water" => SurfaceType.Water,
-                            "Wood" => SurfaceType.Wood,
-                            "Grass" => SurfaceType.Grass,
-                            "Gravel" => SurfaceType.Gravel,
-                            _ => SurfaceType.Stone
-                        };
-                    }
-                }
-
-                return hit.point;
+                finalVolume *= crouchAdditionalVolumeMultiplier;
+                finalPitch *= crouchPitchMultiplier;
             }
 
-            // Fallback to foot position
+            PlayAtPosition(clip, footPosition, finalVolume, finalPitch);
+
+            if (toggleAfterPlay)
+                isLeftFoot = !isLeftFoot;
+        }
+
+        private float GetBaseVolume()
+        {
+            if (actorType != FootstepActorType.Player || playerMovement == null)
+                return enemyBaseVolume;
+
+            float baseVolume = GetVolumeForTier(playerMovement.CurrentTier);
+            if (playerMovement.IsCrouching)
+                baseVolume *= crouchVolumeMultiplier;
+            else if (playerMovement.IsSprinting)
+                baseVolume *= sprintVolumeMultiplier;
+
+            return baseVolume;
+        }
+
+        private Vector3 DetectSurfaceAndGetPosition(bool useLeftFoot)
+        {
+            if (TryDetectSurfaceAndGetPosition(useLeftFoot, raycastDistance, out Vector3 hitPoint))
+            {
+                return hitPoint;
+            }
+
+            Transform currentFoot = useLeftFoot ? leftFoot : rightFoot;
             return currentFoot.position;
         }
 
-        private SurfaceType GetSurfaceFromPhysicMaterial(PhysicsMaterial material)
+        private bool TryDetectSurfaceAndGetPosition(bool useLeftFoot, float castDistance, out Vector3 hitPoint)
         {
-            // Match by material name (case-insensitive)
-            string matName = material.name.ToLower();
+            Transform currentFoot = useLeftFoot ? leftFoot : rightFoot;
+            Vector3 rayOrigin = currentFoot.position + Vector3.up * 0.1f;
+
+            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, castDistance, GetGroundMask(), QueryTriggerInteraction.Ignore))
+            {
+                lastFootHitPoint = hit.point;
+                hitPoint = hit.point;
+
+                SurfaceTag surfaceTag = hit.collider.GetComponent<SurfaceTag>();
+                if (surfaceTag != null)
+                {
+                    currentSurface = surfaceTag.SurfaceType;
+                    return true;
+                }
+
+                if (hit.collider.sharedMaterial != null)
+                {
+                    currentSurface = GetSurfaceFromPhysicMaterial(hit.collider.sharedMaterial);
+                    return true;
+                }
+
+                currentSurface = GetSurfaceFromTag(hit.collider.tag);
+                return true;
+            }
+
+            hitPoint = currentFoot.position;
+            return false;
+        }
+
+        private static SurfaceType GetSurfaceFromTag(string tag)
+        {
+            return tag switch
+            {
+                "Metal" => SurfaceType.Metal,
+                "Dirt" => SurfaceType.Dirt,
+                "Water" => SurfaceType.Water,
+                "Wood" => SurfaceType.Wood,
+                "Grass" => SurfaceType.Grass,
+                "Gravel" => SurfaceType.Gravel,
+                "Stone" => SurfaceType.Stone,
+                _ => SurfaceType.Stone
+            };
+        }
+
+        private static SurfaceType GetSurfaceFromPhysicMaterial(PhysicsMaterial material)
+        {
+            string matName = material.name.ToLowerInvariant();
 
             if (matName.Contains("metal") || matName.Contains("iron") || matName.Contains("steel"))
                 return SurfaceType.Metal;
@@ -291,10 +435,11 @@ namespace DungeonDredge.Audio
 
         private AudioClip GetRandomClipNoRepeat(AudioClip[] clips)
         {
-            if (clips == null || clips.Length == 0) return null;
-            if (clips.Length == 1) return clips[0];
+            if (clips == null || clips.Length == 0)
+                return null;
+            if (clips.Length == 1)
+                return clips[0];
 
-            // Avoid playing the same clip twice in a row
             int newIndex;
             int attempts = 0;
             do
@@ -309,36 +454,63 @@ namespace DungeonDredge.Audio
 
         private void PlayAtPosition(AudioClip clip, Vector3 position, float volume, float pitch)
         {
-            // Get next available audio source from pool
+            if (audioSourcePool == null || audioSourcePool.Length == 0)
+                return;
+
+            float filteredVolume = volume * GetDistanceVolumeMultiplier(position);
+            if (filteredVolume <= cullVolumeThreshold)
+                return;
+
             AudioSource source = audioSourcePool[currentPoolIndex];
-            currentPoolIndex = (currentPoolIndex + 1) % audioSourcePoolSize;
+            currentPoolIndex = (currentPoolIndex + 1) % audioSourcePool.Length;
 
-            // Position at foot hit point
             source.transform.position = position;
-
-            // Configure and play
             source.clip = clip;
-            source.volume = volume;
+            source.volume = Mathf.Clamp01(filteredVolume);
             source.pitch = pitch;
             source.Play();
         }
 
-        private FootstepSoundSet GetSoundSetForSurface(SurfaceType surface)
+        private float GetDistanceVolumeMultiplier(Vector3 sourcePosition)
         {
-            FootstepSoundSet result = surface switch
-            {
-                SurfaceType.Stone => stoneSounds,
-                SurfaceType.Metal => metalSounds,
-                SurfaceType.Dirt => dirtSounds,
-                SurfaceType.Water => waterSounds,
-                SurfaceType.Grass => grassSounds,
-                SurfaceType.Gravel => gravelSounds,
-                SurfaceType.Wood => stoneSounds, // Fallback - add woodSounds if needed
-                _ => defaultSounds
-            };
+            if (!applyDistanceVolumeFilter)
+                return 1f;
 
-            // Fallback to default if the specific set is null
-            return result ?? defaultSounds;
+            Transform listenerTransform = GetListenerTransform();
+            if (listenerTransform == null)
+                return 1f;
+
+            float near = Mathf.Max(0f, distanceNear);
+            float far = Mathf.Max(near + 0.01f, distanceFar);
+            float distance = Vector3.Distance(sourcePosition, listenerTransform.position);
+            float normalized = Mathf.InverseLerp(near, far, distance);
+            return Mathf.Clamp01(distanceVolumeCurve.Evaluate(normalized));
+        }
+
+        private Transform GetListenerTransform()
+        {
+            if (listenerOverride != null)
+                return listenerOverride;
+
+            if (cachedListener == null || !cachedListener.isActiveAndEnabled)
+            {
+                cachedListener = FindFirstObjectByType<AudioListener>();
+            }
+
+            return cachedListener != null ? cachedListener.transform : null;
+        }
+
+        private FootstepSoundSet GetSoundSetForSurface(SurfaceType surfaceType)
+        {
+            if (cachedSurfaceSets.TryGetValue(surfaceType, out FootstepSoundSet set) &&
+                set != null &&
+                set.footstepClips != null &&
+                set.footstepClips.Length > 0)
+            {
+                return set;
+            }
+
+            return defaultSounds;
         }
 
         private float GetVolumeForTier(EncumbranceTier tier)
@@ -353,71 +525,52 @@ namespace DungeonDredge.Audio
             };
         }
 
-        /// <summary>
-        /// Play a landing sound (e.g., after jumping)
-        /// </summary>
-        public void PlayLandingSound()
+        private int GetGroundMask()
         {
-            Vector3 landPosition = DetectSurfaceAndGetPosition();
-            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface) ?? defaultSounds;
-
-            if (soundSet?.landingClips != null && soundSet.landingClips.Length > 0)
-            {
-                AudioClip clip = soundSet.landingClips[Random.Range(0, soundSet.landingClips.Length)];
-                float volume = GetVolumeForTier(playerMovement.CurrentTier) * 1.2f; // Landing is louder
-                float pitch = basePitch + Random.Range(-pitchVariation, pitchVariation);
-                PlayAtPosition(clip, landPosition, Mathf.Clamp01(volume), pitch);
-            }
+            return groundLayer.value == 0 ? Physics.DefaultRaycastLayers : groundLayer.value;
         }
 
-        /// <summary>
-        /// Play a scuff/slide sound (e.g., when stopping suddenly)
-        /// </summary>
-        public void PlayScuffSound()
+        private void OnValidate()
         {
-            Vector3 scuffPosition = DetectSurfaceAndGetPosition();
-            FootstepSoundSet soundSet = GetSoundSetForSurface(currentSurface) ?? defaultSounds;
+            if (randomVolumeRange.x > randomVolumeRange.y)
+                randomVolumeRange = new Vector2(randomVolumeRange.y, randomVolumeRange.x);
 
-            if (soundSet?.scuffClips != null && soundSet.scuffClips.Length > 0)
-            {
-                AudioClip clip = soundSet.scuffClips[Random.Range(0, soundSet.scuffClips.Length)];
-                float volume = GetVolumeForTier(playerMovement.CurrentTier) * 0.8f;
-                float pitch = basePitch + Random.Range(-pitchVariation, pitchVariation);
-                PlayAtPosition(clip, scuffPosition, volume, pitch);
-            }
+            if (randomPitchRange.x > randomPitchRange.y)
+                randomPitchRange = new Vector2(randomPitchRange.y, randomPitchRange.x);
+
+            externalTriggerGroundDistance = Mathf.Max(0.05f, externalTriggerGroundDistance);
+            distanceNear = Mathf.Max(0f, distanceNear);
+            distanceFar = Mathf.Max(distanceNear + 0.01f, distanceFar);
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
-            // Draw foot positions
             if (leftFoot != null)
             {
                 Gizmos.color = Color.blue;
                 Gizmos.DrawWireSphere(leftFoot.position, 0.05f);
             }
+
             if (rightFoot != null)
             {
                 Gizmos.color = Color.red;
                 Gizmos.DrawWireSphere(rightFoot.position, 0.05f);
             }
 
-            // Draw last hit point
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(lastFootHitPoint, 0.1f);
 
-            // Draw raycast
             Gizmos.color = Color.yellow;
-            Vector3 rayOrigin = (isLeftFoot ? leftFoot : rightFoot)?.position ?? transform.position;
+            Vector3 rayOrigin = (isLeftFoot ? leftFoot : rightFoot) != null
+                ? (isLeftFoot ? leftFoot.position : rightFoot.position)
+                : transform.position;
             rayOrigin += Vector3.up * 0.1f;
             Gizmos.DrawLine(rayOrigin, rayOrigin + Vector3.down * raycastDistance);
         }
 #endif
     }
 
-    /// <summary>
-    /// Sound set for a specific surface type
-    /// </summary>
     [System.Serializable]
     public class FootstepSoundSet
     {
@@ -428,12 +581,13 @@ namespace DungeonDredge.Audio
         public AudioClip[] landingClips;
         [Tooltip("Sound when sliding or stopping suddenly")]
         public AudioClip[] scuffClips;
+        [Tooltip("Per-surface volume multiplier")]
+        public float volumeMultiplier = 1f;
+        [Tooltip("Per-surface base pitch")]
+        public float basePitch = 1f;
     }
 
-    /// <summary>
-    /// Types of surfaces that affect footstep sounds
-    /// </summary>
-    public enum SurfaceType
+/*     public enum SurfaceType
     {
         Stone,
         Metal,
@@ -444,12 +598,9 @@ namespace DungeonDredge.Audio
         Gravel
     }
 
-    /// <summary>
-    /// Component to tag surfaces with their type for footstep detection
-    /// </summary>
     public class SurfaceTag : MonoBehaviour
     {
         [SerializeField] private SurfaceType surfaceType = SurfaceType.Stone;
         public SurfaceType SurfaceType => surfaceType;
-    }
+    } */
 }

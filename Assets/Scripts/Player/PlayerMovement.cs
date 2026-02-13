@@ -1,5 +1,6 @@
 using UnityEngine;
 using DungeonDredge.Core;
+using DungeonDredge.Audio;
 
 namespace DungeonDredge.Player
 {
@@ -35,6 +36,9 @@ namespace DungeonDredge.Player
         [Header("Audio")]
         [SerializeField] private float footstepInterval = 0.5f;
         [SerializeField] private AudioSource footstepAudioSource;
+        [SerializeField] private FootstepSystem footstepSystem;
+        [Tooltip("If true, footstep audio/noise should be triggered from animation events.")]
+        [SerializeField] private bool useAnimationDrivenFootsteps = true;
 
         // State
         private CharacterController controller;
@@ -87,6 +91,9 @@ namespace DungeonDredge.Player
 
             if (cameraTransform == null)
                 cameraTransform = Camera.main?.transform;
+
+            if (footstepSystem == null)
+                footstepSystem = GetComponent<FootstepSystem>();
         }
 
         public void Move(Vector3 direction, bool sprint, bool crouch)
@@ -193,6 +200,12 @@ namespace DungeonDredge.Player
 
         private void HandleFootsteps()
         {
+            if (useAnimationDrivenFootsteps && footstepSystem != null)
+            {
+                footstepTimer = 0f;
+                return;
+            }
+
             // Footstep timing based on speed
             float interval = footstepInterval / (CurrentSpeed / baseWalkSpeed);
             footstepTimer += Time.deltaTime;
@@ -201,18 +214,42 @@ namespace DungeonDredge.Player
             {
                 footstepTimer = 0f;
                 
-                // Calculate noise based on tier
-                float noiseIntensity = GetNoiseIntensityForTier();
-                
-                // Reduce noise when crouching
-                if (isCrouching)
-                    noiseIntensity *= 0.3f;
+                EmitFootstepNoise();
 
-                GenerateNoise(noiseIntensity);
-
-                // Play footstep audio
-                PlayFootstepSound();
+                // Prefer the shared footstep system when present.
+                if (footstepSystem != null)
+                    footstepSystem.TriggerFootstep();
+                else
+                    PlayFootstepSound();
             }
+        }
+
+        public void OnAnimationFootstep()
+        {
+            EmitFootstepNoise();
+        }
+
+        private void EmitFootstepNoise()
+        {
+            float noiseIntensity = GetNoiseIntensityForTier();
+            if (isCrouching)
+            {
+                float speedRatio = CurrentSpeed / Mathf.Max(0.1f, baseWalkSpeed);
+
+                // Crouch-walk is near silent, but "fast crouch movement" still carries risk.
+                // This keeps stealth reliable at low speed while preventing free sprint-like crouch movement.
+                if (speedRatio <= 0.38f)
+                {
+                    noiseIntensity *= 0.04f;
+                }
+                else
+                {
+                    float riskFactor = Mathf.InverseLerp(0.38f, 0.85f, speedRatio);
+                    noiseIntensity *= Mathf.Lerp(0.12f, 0.45f, riskFactor);
+                }
+            }
+
+            GenerateNoise(noiseIntensity);
         }
 
         private float GetNoiseIntensityForTier()

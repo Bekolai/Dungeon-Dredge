@@ -3,6 +3,7 @@ using UnityEngine.AI;
 using DungeonDredge.Core;
 using DungeonDredge.Inventory;
 using DungeonDredge.Enemies;
+using DungeonDredge.Player;
 
 namespace DungeonDredge.AI
 {
@@ -34,7 +35,15 @@ namespace DungeonDredge.AI
         [Header("Detection")]
         [SerializeField] private float sightRange = 15f;
         [SerializeField] private float sightAngle = 120f;
+        [SerializeField] private float closeProximityDetection = 2.5f;
+        [SerializeField] private float rearAwarenessRange = 4f;
+        [SerializeField] private float hearingRange = 16f;
         [SerializeField] private float hearingThreshold = 0.5f;
+        [SerializeField] private float crouchStillSightRangeMultiplier = 0.7f;
+        [SerializeField] private float crouchMovingSightRangeMultiplier = 0.85f;
+        [SerializeField] private float sprintSightRangeMultiplier = 1.2f;
+        [SerializeField] private float minimumCrouchVisibleRange = 4f;
+        [SerializeField] private float crouchRearAwarenessMultiplier = 0.6f;
         [SerializeField] private LayerMask playerLayer;
         [SerializeField] private LayerMask obstructionLayer;
 
@@ -45,6 +54,8 @@ namespace DungeonDredge.AI
 
         [Header("Patrol")]
         [SerializeField] private Transform[] patrolPoints;
+        [SerializeField] private float randomPatrolRadius = 9f;
+        [SerializeField] private float patrolPointReachThreshold = 0.75f;
 
         [Header("Visual")]
         [SerializeField] private Renderer mainRenderer;
@@ -68,16 +79,24 @@ namespace DungeonDredge.AI
         private bool isAlerted;
         private bool isAggressive;
         private bool isStunned;
+        private bool attackInProgress;
+        private bool attackDamageApplied;
+        private float nextAttackAllowedTime;
 
         // Detection
         private float lastDetectionCheck;
         private const float DetectionCheckInterval = 0.2f;
+        private Transform cachedPlayerTransform;
+        private float lastPlayerLookupTime;
+        private const float PlayerLookupInterval = 1f;
+        private Vector3 patrolAnchor;
 
         // Properties
         public NavMeshAgent Agent => agent;
         public Transform Target => target;
         public Vector3 InvestigationTarget => investigationTarget;
         public Transform[] PatrolPoints => patrolPoints;
+        public float PatrolPointReachThreshold => patrolPointReachThreshold;
         public EnemyBehaviorType BehaviorType => behaviorType;
         public float WalkSpeed => walkSpeed;
         public float ChaseSpeed => chaseSpeed;
@@ -85,9 +104,11 @@ namespace DungeonDredge.AI
         public float HearingThreshold => hearingThreshold;
         public float AttackRange => attackRange;
         public float AttackCooldown => attackCooldown;
+        public bool CanAttackNow => Time.time >= nextAttackAllowedTime;
         public bool IsAggressive => isAggressive;
         public bool IsAlerted => isAlerted;
         public bool IsStunned => isStunned;
+        public bool IsAttackInProgress => attackInProgress;
         public DungeonRank Rank => rank;
         public string EnemyName => enemyName;
         public EnemyData EnemyData => enemyData;
@@ -99,6 +120,7 @@ namespace DungeonDredge.AI
         {
             agent = GetComponent<NavMeshAgent>();
             agent.speed = walkSpeed;
+            patrolAnchor = transform.position;
 
             InitializeAnimationComponents();
             InitializeStateMachine();
@@ -119,6 +141,7 @@ namespace DungeonDredge.AI
 
         private void OnDestroy()
         {
+            UnhookAnimationEvents();
             StealthManager.Instance?.UnregisterEnemy(gameObject);
         }
 
@@ -221,6 +244,7 @@ namespace DungeonDredge.AI
             stateMachine.AddState(new IdleState());
             stateMachine.AddState(new PatrolState());
             stateMachine.AddState(new InvestigateState());
+            stateMachine.AddState(new StalkState());
             stateMachine.AddState(new ChaseState());
             stateMachine.AddState(new AttackState());
             stateMachine.AddState(new FleeState());
@@ -241,54 +265,154 @@ namespace DungeonDredge.AI
 
         private void CheckForPlayer()
         {
-            // Find player
-            Collider[] hits = Physics.OverlapSphere(transform.position, sightRange, playerLayer);
-            
-            foreach (var hit in hits)
+            bool spottedPlayer = false;
+
+            // Primary path: layer-based detection (fast and explicit when configured).
+            if (playerLayer.value != 0)
             {
-                if (hit.CompareTag("Player"))
+                Collider[] hits = Physics.OverlapSphere(transform.position, sightRange, playerLayer);
+                foreach (var hit in hits)
                 {
-                    if (CanSeeTarget(hit.transform))
+                    if (!hit.CompareTag("Player"))
+                        continue;
+
+                    if (CanSeeTarget(hit.transform) || CanSenseNearbyTarget(hit.transform))
                     {
                         stateMachine.OnPlayerSpotted(hit.transform);
-                        return;
+                        spottedPlayer = true;
+                        break;
                     }
                 }
             }
 
-            // Player not visible
-            if (target != null)
+            // Fallback path: if layer mask is unset/misconfigured, still detect by tag.
+            if (!spottedPlayer)
+            {
+                Transform player = GetPlayerTransformCached();
+                if (player != null && (CanSeeTarget(player) || CanSenseNearbyTarget(player)))
+                {
+                    stateMachine.OnPlayerSpotted(player);
+                    spottedPlayer = true;
+                }
+            }
+
+            if (!spottedPlayer && target != null)
             {
                 stateMachine.OnPlayerLost();
             }
         }
 
+        private Transform GetPlayerTransformCached()
+        {
+            if (cachedPlayerTransform != null)
+                return cachedPlayerTransform;
+
+            if (Time.time - lastPlayerLookupTime < PlayerLookupInterval)
+                return null;
+
+            lastPlayerLookupTime = Time.time;
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            cachedPlayerTransform = player != null ? player.transform : null;
+            return cachedPlayerTransform;
+        }
+
         public bool CanSeePlayer()
         {
             if (target == null) return false;
-            return CanSeeTarget(target);
+            return CanSeeTarget(target) || CanSenseNearbyTarget(target);
         }
 
         private bool CanSeeTarget(Transform targetTransform)
         {
             Vector3 directionToTarget = (targetTransform.position - transform.position).normalized;
             float distanceToTarget = Vector3.Distance(transform.position, targetTransform.position);
+            float effectiveSightRange = GetEffectiveSightRange(targetTransform);
 
             // Check range
-            if (distanceToTarget > sightRange)
+            if (distanceToTarget > effectiveSightRange)
                 return false;
 
-            // Check angle
-            float angle = Vector3.Angle(transform.forward, directionToTarget);
-            if (angle > sightAngle / 2f)
-                return false;
+            // Check angle. Allow very close targets to be noticed even outside the cone.
+            if (distanceToTarget > closeProximityDetection)
+            {
+                float angle = Vector3.Angle(transform.forward, directionToTarget);
+                if (angle > sightAngle / 2f)
+                    return false;
+            }
 
             // Check line of sight
             Vector3 eyePosition = transform.position + Vector3.up * 1.5f;
-            if (Physics.Raycast(eyePosition, directionToTarget, distanceToTarget, obstructionLayer))
+            if (obstructionLayer.value != 0 &&
+                Physics.Raycast(eyePosition, directionToTarget, distanceToTarget, obstructionLayer))
                 return false;
 
             return true;
+        }
+
+        private bool CanSenseNearbyTarget(Transform targetTransform)
+        {
+            float effectiveRearAwarenessRange = GetEffectiveRearAwarenessRange(targetTransform);
+            float distanceToTarget = Vector3.Distance(transform.position, targetTransform.position);
+            if (distanceToTarget > effectiveRearAwarenessRange)
+                return false;
+
+            Vector3 directionToTarget = (targetTransform.position - transform.position).normalized;
+            Vector3 earPosition = transform.position + Vector3.up * 1.4f;
+
+            if (obstructionLayer.value != 0 &&
+                Physics.Raycast(earPosition, directionToTarget, distanceToTarget, obstructionLayer))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private float GetEffectiveSightRange(Transform targetTransform)
+        {
+            float effectiveRange = sightRange;
+
+            if (TryGetPlayerMovement(targetTransform, out PlayerMovement playerMovement))
+            {
+                if (playerMovement.IsSprinting)
+                {
+                    effectiveRange *= sprintSightRangeMultiplier;
+                }
+                else if (playerMovement.IsCrouching)
+                {
+                    float crouchMultiplier = playerMovement.IsMoving
+                        ? crouchMovingSightRangeMultiplier
+                        : crouchStillSightRangeMultiplier;
+                    effectiveRange = Mathf.Max(minimumCrouchVisibleRange, sightRange * crouchMultiplier);
+                }
+            }
+
+            return effectiveRange;
+        }
+
+        private float GetEffectiveRearAwarenessRange(Transform targetTransform)
+        {
+            float effectiveRange = rearAwarenessRange;
+
+            if (TryGetPlayerMovement(targetTransform, out PlayerMovement playerMovement) &&
+                playerMovement.IsCrouching &&
+                !playerMovement.IsSprinting)
+            {
+                effectiveRange *= crouchRearAwarenessMultiplier;
+            }
+
+            return effectiveRange;
+        }
+
+        private static bool TryGetPlayerMovement(Transform targetTransform, out PlayerMovement playerMovement)
+        {
+            playerMovement = targetTransform.GetComponent<PlayerMovement>();
+            if (playerMovement == null)
+            {
+                playerMovement = targetTransform.GetComponentInParent<PlayerMovement>();
+            }
+
+            return playerMovement != null;
         }
 
         #endregion
@@ -299,9 +423,14 @@ namespace DungeonDredge.AI
         {
             if (isStunned) return;
 
-            // Reduce intensity based on distance
+            // Distance-based hearing falloff. This keeps loud, nearby footsteps meaningful
+            // while still allowing far noises to fade out naturally.
             float distance = Vector3.Distance(transform.position, noisePosition);
-            float effectiveIntensity = intensity * (1f - distance / (intensity * 20f));
+            if (distance > hearingRange)
+                return;
+
+            float distanceFactor = 1f - Mathf.Clamp01(distance / Mathf.Max(0.1f, hearingRange));
+            float effectiveIntensity = intensity * distanceFactor;
 
             if (effectiveIntensity > hearingThreshold)
             {
@@ -313,17 +442,60 @@ namespace DungeonDredge.AI
 
         #region Combat
 
+        public bool TryStartAttack()
+        {
+            if (target == null || isStunned || attackInProgress || !CanAttackNow)
+                return false;
+
+            attackInProgress = true;
+            attackDamageApplied = false;
+
+            // Force stop movement while attacking.
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.ResetPath();
+            }
+
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.PlayRandomAttack();
+                return true;
+            }
+
+            if (enemyAnimator != null)
+            {
+                enemyAnimator.PlayAttack();
+                return true;
+            }
+
+            // Fallback if no animator exists.
+            ApplyAttackDamage();
+            EndAttackAnimation();
+            return true;
+        }
+
+        public void MarkAttackUsed(float cooldownScale = 1f)
+        {
+            float randomizedCooldown = attackCooldown * Random.Range(0.9f, 1.15f);
+            nextAttackAllowedTime = Time.time + randomizedCooldown * Mathf.Max(0.1f, cooldownScale);
+        }
+
+        // Backward compatibility with existing call sites.
         public void Attack()
         {
-            if (target == null) return;
+            TryStartAttack();
+        }
 
-            // Simple damage - in a full implementation, use a health system
-            Debug.Log($"{enemyName} attacks for {attackDamage} damage!");
+        public void OnAnimationAttackHit()
+        {
+            if (!attackInProgress) return;
+            ApplyAttackDamage();
+        }
 
-              if (advancedAnimator != null)
-            advancedAnimator.PlayRandomAttack();
-        else if (enemyAnimator != null)
-            enemyAnimator.PlayAttack();
+        public void OnAnimationAttackEnd()
+        {
+            EndAttackAnimation();
         }
 
         public void TakeDamage(float damage)
@@ -368,6 +540,33 @@ namespace DungeonDredge.AI
         public void SetInvestigationTarget(Vector3 position)
         {
             investigationTarget = position;
+        }
+
+        public bool TryGetRandomPatrolPoint(out Vector3 patrolPoint)
+        {
+            patrolPoint = patrolAnchor;
+            float radius = Mathf.Max(2f, randomPatrolRadius);
+
+            for (int i = 0; i < 10; i++)
+            {
+                Vector3 randomOffset = Random.insideUnitSphere * radius;
+                randomOffset.y = 0f;
+                Vector3 candidate = patrolAnchor + randomOffset;
+
+                if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, radius * 0.6f, NavMesh.AllAreas))
+                {
+                    patrolPoint = hit.position;
+                    return true;
+                }
+            }
+
+            if (NavMesh.SamplePosition(patrolAnchor, out NavMeshHit fallbackHit, radius, NavMesh.AllAreas))
+            {
+                patrolPoint = fallbackHit.position;
+                return true;
+            }
+
+            return false;
         }
 
         public void SetAlerted(bool alerted)
@@ -493,6 +692,88 @@ namespace DungeonDredge.AI
             if (advancedAnimator == null) advancedAnimator = GetComponentInChildren<EnemyAnimatorAdvanced>();
 
             healthComponent = GetComponent<HealthComponent>();
+            HookAnimationEvents();
+        }
+
+        private void HookAnimationEvents()
+        {
+            if (enemyAnimator != null)
+            {
+                enemyAnimator.OnAttackHit -= OnAnimationAttackHit;
+                enemyAnimator.OnAttackHit += OnAnimationAttackHit;
+                enemyAnimator.OnAttackEnd -= OnAnimationAttackEnd;
+                enemyAnimator.OnAttackEnd += OnAnimationAttackEnd;
+                enemyAnimator.OnDeathComplete -= HandleDeathAnimationComplete;
+                enemyAnimator.OnDeathComplete += HandleDeathAnimationComplete;
+            }
+
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.OnAttackHitFrame -= OnAnimationAttackHit;
+                advancedAnimator.OnAttackHitFrame += OnAnimationAttackHit;
+                advancedAnimator.OnAttackComplete -= OnAnimationAttackEnd;
+                advancedAnimator.OnAttackComplete += OnAnimationAttackEnd;
+                advancedAnimator.OnDeathComplete -= HandleDeathAnimationComplete;
+                advancedAnimator.OnDeathComplete += HandleDeathAnimationComplete;
+            }
+        }
+
+        private void UnhookAnimationEvents()
+        {
+            if (enemyAnimator != null)
+            {
+                enemyAnimator.OnAttackHit -= OnAnimationAttackHit;
+                enemyAnimator.OnAttackEnd -= OnAnimationAttackEnd;
+                enemyAnimator.OnDeathComplete -= HandleDeathAnimationComplete;
+            }
+
+            if (advancedAnimator != null)
+            {
+                advancedAnimator.OnAttackHitFrame -= OnAnimationAttackHit;
+                advancedAnimator.OnAttackComplete -= OnAnimationAttackEnd;
+                advancedAnimator.OnDeathComplete -= HandleDeathAnimationComplete;
+            }
+        }
+
+        private void ApplyAttackDamage()
+        {
+            if (attackDamageApplied || target == null)
+                return;
+
+            float distance = Vector3.Distance(transform.position, target.position);
+            if (distance > attackRange * 1.35f)
+                return;
+
+            float damageMultiplier = advancedAnimator != null ? advancedAnimator.GetCurrentDamageMultiplier() : 1f;
+            float finalDamage = attackDamage * damageMultiplier;
+
+            HealthComponent targetHealth = target.GetComponent<HealthComponent>();
+            if (targetHealth == null)
+            {
+                targetHealth = target.GetComponentInParent<HealthComponent>();
+            }
+
+            if (targetHealth != null)
+            {
+                targetHealth.TakeDamage(finalDamage);
+                attackDamageApplied = true;
+            }
+        }
+
+        private void EndAttackAnimation()
+        {
+            attackInProgress = false;
+            attackDamageApplied = false;
+
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+            }
+        }
+
+        private void HandleDeathAnimationComplete()
+        {
+            OnDeath?.Invoke();
         }
 
         #endregion
@@ -528,6 +809,18 @@ namespace DungeonDredge.AI
                         Gizmos.DrawSphere(point.position, 0.5f);
                     }
                 }
+            }
+        }
+
+        private void OnValidate()
+        {
+            if (playerLayer.value == 0)
+            {
+                Debug.LogWarning($"[EnemyAI] {name}: Player Layer is not configured. Detection will fall back to tag lookup.");
+            }
+            if (obstructionLayer.value == 0)
+            {
+                Debug.LogWarning($"[EnemyAI] {name}: Obstruction Layer is not configured. Line-of-sight checks will ignore walls.");
             }
         }
 

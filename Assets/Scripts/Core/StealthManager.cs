@@ -12,6 +12,8 @@ namespace DungeonDredge.Core
         [SerializeField] private float noiseDecayRate = 2f;
         [SerializeField] private float maxNoiseLevel = 2f;
         [SerializeField] private float noiseCheckInterval = 0.1f;
+        [SerializeField] private float noiseToAlertRadiusMultiplier = 14f;
+        [SerializeField] private float minimumAlertRadius = 2f;
 
         [Header("Threat Detection")]
         [SerializeField] private float baseThreatRadius = 20f;
@@ -109,7 +111,7 @@ namespace DungeonDredge.Core
 
         private void AlertNearbyEnemies(Vector3 noisePosition, float intensity)
         {
-            float alertRadius = intensity * 10f; // 10 units per intensity point
+            float alertRadius = Mathf.Max(minimumAlertRadius, intensity * noiseToAlertRadiusMultiplier);
 
             foreach (var enemy in activeEnemies)
             {

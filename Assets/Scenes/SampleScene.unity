@@ -615,7 +615,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4971857915959286978, guid: f1443ecf17dae424aa8d1bd205f99bfb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1631880255}
   m_SourcePrefab: {fileID: 100100000, guid: f1443ecf17dae424aa8d1bd205f99bfb, type: 3}
 --- !u!1 &1563148207
 GameObject:
@@ -663,6 +666,61 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1631880247 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4971857915959286978, guid: f1443ecf17dae424aa8d1bd205f99bfb, type: 3}
+  m_PrefabInstance: {fileID: 861981702}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1631880255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1631880247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f422fe2452ad5c4295ec14b6eeaac5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Audio.FootstepSystem
+  actorType: 0
+  playerMovement: {fileID: 0}
+  navMeshAgent: {fileID: 0}
+  characterController: {fileID: 0}
+  leftFoot: {fileID: 0}
+  rightFoot: {fileID: 0}
+  useMovementTimer: 1
+  allowExternalTriggers: 1
+  requireGroundContactForExternalTriggers: 1
+  externalTriggerGroundDistance: 0.3
+  defaultSoundsAsset: {fileID: 0}
+  surfaceSoundSets: []
+  baseStepInterval: 0.5
+  sprintIntervalMultiplier: 0.6
+  crouchIntervalMultiplier: 1.5
+  referenceMoveSpeed: 5
+  minSpeedToStep: 0.2
+  enemyBaseVolume: 0.55
+  lightVolumeBase: 0.3
+  mediumVolumeBase: 0.5
+  heavyVolumeBase: 0.8
+  snailVolumeBase: 1
+  crouchVolumeMultiplier: 0.4
+  crouchAdditionalVolumeMultiplier: 0.8
+  sprintVolumeMultiplier: 1.15
+  randomVolumeRange: {x: 0.9, y: 1.1}
+  randomPitchRange: {x: 0.94, y: 1.06}
+  crouchPitchMultiplier: 0.96
+  spatialBlend: 1
+  minDistance: 1
+  maxDistance: 20
+  rolloffMode: 1
+  raycastDistance: 0.5
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  audioSourcePoolSize: 8
+  audioSourcePrefab: {fileID: 0}
 --- !u!1 &2015372742
 GameObject:
   m_ObjectHideFlags: 0
