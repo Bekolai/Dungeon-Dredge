@@ -115,11 +115,13 @@ namespace DungeonDredge.Dungeon
             // Create corridors
             GenerateCorridors();
 
+            // Spawn content (before NavMesh is ready for AI agents)
+            PopulateRooms();
             // Bake NavMesh
             BakeNavMesh();
 
-            // Spawn content (after NavMesh is ready for AI agents)
-            PopulateRooms();
+            // Spawn enemies (after NavMesh is ready for AI agents)
+            PopulateRoomsEnemies();
 
             OnDungeonGenerated?.Invoke();
         }
@@ -680,7 +682,7 @@ namespace DungeonDredge.Dungeon
                         break;
 
                     case RoomType.Enemy:
-                        room.SpawnEnemies(enemyPrefabs, settings);
+                 /*        room.SpawnEnemies(enemyPrefabs, settings); */
                         room.SpawnLoot(itemDatabase, settings);
                         break;
 
@@ -694,7 +696,7 @@ namespace DungeonDredge.Dungeon
 
                     case RoomType.Boss:
                         // Boss rooms should always feel meaningful.
-                        room.SpawnEnemies(enemyPrefabs, settings);
+                      /*   room.SpawnEnemies(enemyPrefabs, settings); */
                         room.SpawnLoot(itemDatabase, settings);
                         if (Random.value < 0.75f)
                         {
@@ -704,6 +706,28 @@ namespace DungeonDredge.Dungeon
                 }
             }
         }
+       private void PopulateRoomsEnemies()
+        {
+            foreach (var room in rooms)
+            {
+                // Decorate room with theme
+                DecorateRoom(room);
+
+                switch (room.Type)
+                {
+                    case RoomType.Enemy:
+                        room.SpawnEnemies(enemyPrefabs, settings);
+                        break;
+
+                    case RoomType.Boss:
+                        // Boss rooms should always feel meaningful.
+                        room.SpawnEnemies(enemyPrefabs, settings);
+                        break;
+                }
+            }
+        }
+
+
 
         private void DecorateRoom(Room room)
         {
@@ -733,6 +757,19 @@ namespace DungeonDredge.Dungeon
 
         private void BakeNavMesh()
         {
+            if (navMeshSurface == null)
+            {
+                Debug.LogWarning("[DungeonGenerator] NavMeshSurface is not assigned. Skipping NavMesh bake.");
+                return;
+            }
+
+            // Runtime baking with RenderMeshes requires all source meshes to be readable in builds.
+            // Use collider geometry to avoid player-only bake failures from non-readable decor meshes.
+            if (navMeshSurface.useGeometry == NavMeshCollectGeometry.RenderMeshes)
+            {
+                navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+            }
+
             navMeshSurface.BuildNavMesh();
             foreach (var room in rooms)
             {

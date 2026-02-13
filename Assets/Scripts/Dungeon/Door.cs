@@ -74,7 +74,7 @@ namespace DungeonDredge.Dungeon
             if (doorMode == DoorMode.Archway)
             {
                 isOpen = true;
-                if (doorPanel != null) doorPanel.SetActive(false);
+               /*  if (doorPanel != null) doorPanel.SetActive(false); */
                 UpdateNavMeshObstacle();
                 return;
             }
@@ -235,7 +235,7 @@ namespace DungeonDredge.Dungeon
                 // Open passage
                 isOpen = true;
                 isLocked = false;
-                if (doorPanel != null) doorPanel.SetActive(false);
+                if (doorPanel != null) doorPanel.SetActive(true);
                 if (wallFiller != null) wallFiller.SetActive(false);
             }
             else if (mode == DoorMode.Locked)
