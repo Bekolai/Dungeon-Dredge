@@ -22,6 +22,7 @@ namespace DungeonDredge.Dungeon
 
         [Header("Spawn Points")]
         [SerializeField] private Transform[] lootSpawnPoints;
+        [SerializeField] private Transform[] mineableSpawnPoints;
         [SerializeField] private Transform[] enemySpawnPoints;
         [SerializeField] private Transform playerSpawnPoint;
 
@@ -37,11 +38,13 @@ namespace DungeonDredge.Dungeon
         // Spawned objects
         private List<GameObject> spawnedEnemies = new List<GameObject>();
         private List<GameObject> spawnedLoot = new List<GameObject>();
+        private List<GameObject> spawnedMineables = new List<GameObject>();
 
         // State
         private bool isCleared = false;
         private bool isVisited = false;
         private bool isDecorated = false;
+        private bool loggedMineableFallback;
 
         // Properties
         public RoomType Type => roomType;
@@ -244,8 +247,103 @@ namespace DungeonDredge.Dungeon
                 if (enemyAI != null && enemyAI.EnemyData != null)
                 {
                     enemyAI.Initialize(enemyAI.EnemyData, settings.rank);
+                    enemyAI.OnDeath += () => OnEnemyKilled(enemy);
                 }
             }
+        }
+
+        public void SpawnMineables(DungeonSettings settings, ItemDatabase itemDatabase)
+        {
+            if (settings == null || itemDatabase == null)
+                return;
+            if (Random.value > settings.mineableSpawnChance)
+                return;
+
+            Transform[] spawnPoints = mineableSpawnPoints;
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                // Fallback to loot points so mining works even before dedicated spawn setup.
+                spawnPoints = lootSpawnPoints;
+                if (!loggedMineableFallback)
+                {
+                    loggedMineableFallback = true;
+                    Debug.LogWarning($"[Room] {name} has no MineSpawn points. Reusing LootSpawn points for mineables.");
+                }
+            }
+            if (spawnPoints == null || spawnPoints.Length == 0)
+                return;
+
+            GameObject[] candidates = settings.mineablePrefabs;
+            bool useRuntimeFallback = candidates == null || candidates.Length == 0;
+            if (useRuntimeFallback && !loggedMineableFallback)
+            {
+                loggedMineableFallback = true;
+                Debug.LogWarning($"[Room] {name} has no mineable prefabs configured. Using runtime fallback mineables.");
+            }
+
+            int count = Random.Range(settings.minMineablesPerRoom, settings.maxMineablesPerRoom + 1);
+            count = Mathf.Clamp(count, 0, spawnPoints.Length);
+
+            for (int i = 0; i < count; i++)
+            {
+                Transform spawnPoint = spawnPoints[i];
+                GameObject mineable;
+                if (useRuntimeFallback)
+                {
+                    mineable = CreateRuntimeMineableNode(spawnPoint, itemDatabase, settings.rank);
+                }
+                else
+                {
+                    GameObject prefab = candidates[Random.Range(0, candidates.Length)];
+                    if (prefab == null)
+                        continue;
+                    mineable = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
+                }
+                if (mineable == null)
+                    continue;
+                spawnedMineables.Add(mineable);
+            }
+        }
+
+        private GameObject CreateRuntimeMineableNode(Transform spawnPoint, ItemDatabase itemDatabase, DungeonRank rank)
+        {
+            ItemData fallbackItem = GetFallbackMineableItem(itemDatabase, rank);
+            if (fallbackItem == null)
+            {
+                return null;
+            }
+
+            GameObject runtimeMineable = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            runtimeMineable.name = "RuntimeMineableNode";
+            runtimeMineable.transform.localScale = new Vector3(0.8f, 0.7f, 0.8f);
+            runtimeMineable.transform.position = spawnPoint.position;
+            runtimeMineable.transform.rotation = spawnPoint.rotation;
+
+            var mineableNode = runtimeMineable.AddComponent<MineableNode>();
+            mineableNode.Configure(fallbackItem, 3, 1, 3);
+            return runtimeMineable;
+        }
+
+        private ItemData GetFallbackMineableItem(ItemDatabase itemDatabase, DungeonRank rank)
+        {
+            var materialItems = itemDatabase.GetItemsByCategory(ItemCategory.Material)
+                .Where(item => item != null && item.minimumRank <= rank && item.worldPrefab != null)
+                .ToList();
+
+            if (materialItems.Count > 0)
+            {
+                return materialItems[Random.Range(0, materialItems.Count)];
+            }
+
+            var allRankItems = itemDatabase.GetItemsForRank(rank)
+                .Where(item => item != null && item.worldPrefab != null)
+                .ToList();
+            if (allRankItems.Count > 0)
+            {
+                return allRankItems[Random.Range(0, allRankItems.Count)];
+            }
+
+            return null;
         }
 
         private List<GameObject> GetEligibleEnemyPrefabs(GameObject[] enemyPrefabs, DungeonSettings settings)
@@ -310,6 +408,14 @@ namespace DungeonDredge.Dungeon
             {
                 lootSpawnPoints = allChildren
                     .Where(t => t != transform && t.name.StartsWith("LootSpawn"))
+                    .OrderBy(t => t.name)
+                    .ToArray();
+            }
+
+            if (mineableSpawnPoints == null || mineableSpawnPoints.Length == 0)
+            {
+                mineableSpawnPoints = allChildren
+                    .Where(t => t != transform && t.name.StartsWith("MineSpawn"))
                     .OrderBy(t => t.name)
                     .ToArray();
             }
@@ -395,6 +501,13 @@ namespace DungeonDredge.Dungeon
                     Destroy(loot);
             }
             spawnedLoot.Clear();
+
+            foreach (var mineable in spawnedMineables)
+            {
+                if (mineable != null)
+                    Destroy(mineable);
+            }
+            spawnedMineables.Clear();
         }
 
         private void OnDestroy()

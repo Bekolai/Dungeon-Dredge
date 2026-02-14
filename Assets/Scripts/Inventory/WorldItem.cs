@@ -28,6 +28,12 @@ namespace DungeonDredge.Inventory
         {
             startPosition = transform.position;
 
+            // Ensure loot is always raycastable even if a prefab forgot colliders.
+            if (GetComponentInChildren<Collider>() == null)
+            {
+                gameObject.AddComponent<SphereCollider>();
+            }
+
             if (rb == null)
                 rb = GetComponent<Rigidbody>();
 

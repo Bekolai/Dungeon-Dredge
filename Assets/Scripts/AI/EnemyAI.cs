@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Events;
 using DungeonDredge.Core;
 using DungeonDredge.Inventory;
 using DungeonDredge.Enemies;
@@ -82,6 +83,8 @@ namespace DungeonDredge.AI
         private bool attackInProgress;
         private bool attackDamageApplied;
         private float nextAttackAllowedTime;
+        private bool deathNotified;
+        private UnityAction healthDeathHandler;
 
         // Detection
         private float lastDetectionCheck;
@@ -142,12 +145,19 @@ namespace DungeonDredge.AI
         private void OnDestroy()
         {
             UnhookAnimationEvents();
+            UnhookHealthEvents();
             StealthManager.Instance?.UnregisterEnemy(gameObject);
         }
 
         private void Update()
         {
             if (isStunned) return;
+
+            if (CheckLanternRepel())
+            {
+                stateMachine.Update();
+                return;
+            }
 
             // Periodic detection check
             if (Time.time - lastDetectionCheck >= DetectionCheckInterval)
@@ -157,6 +167,22 @@ namespace DungeonDredge.AI
             }
 
             stateMachine.Update();
+        }
+
+        private bool CheckLanternRepel()
+        {
+            if (behaviorType != EnemyBehaviorType.Flee)
+                return false;
+
+            if (!LanternController.TryGetRepellingLantern(transform.position, out Transform lanternOwner))
+                return false;
+
+            SetTarget(lanternOwner);
+            if (stateMachine.CurrentStateType != typeof(FleeState))
+            {
+                stateMachine.SetState<FleeState>();
+            }
+            return true;
         }
 
         /// <summary>
@@ -171,6 +197,7 @@ namespace DungeonDredge.AI
                 return;
             }
 
+            deathNotified = false;
             enemyData = data;
 
             // Apply basic info
@@ -693,6 +720,67 @@ namespace DungeonDredge.AI
 
             healthComponent = GetComponent<HealthComponent>();
             HookAnimationEvents();
+            HookHealthEvents();
+        }
+
+        private void HookHealthEvents()
+        {
+            if (healthComponent == null)
+                return;
+
+            healthDeathHandler ??= HandleHealthDeath;
+            healthComponent.OnDeath.RemoveListener(healthDeathHandler);
+            healthComponent.OnDeath.AddListener(healthDeathHandler);
+        }
+
+        private void UnhookHealthEvents()
+        {
+            if (healthComponent == null || healthDeathHandler == null)
+                return;
+
+            healthComponent.OnDeath.RemoveListener(healthDeathHandler);
+        }
+
+        private void HandleHealthDeath()
+        {
+            SpawnConfiguredDrops();
+            NotifyDeathOnce();
+        }
+
+        private void SpawnConfiguredDrops()
+        {
+            if (enemyData == null || enemyData.itemDrops == null || enemyData.itemDrops.Length == 0)
+                return;
+
+            foreach (var drop in enemyData.itemDrops)
+            {
+                if (drop == null || drop.item == null || drop.item.worldPrefab == null)
+                    continue;
+
+                if (Random.value > drop.dropChance)
+                    continue;
+
+                int quantity = Random.Range(
+                    Mathf.Max(1, drop.minQuantity),
+                    Mathf.Max(Mathf.Max(1, drop.minQuantity), drop.maxQuantity) + 1);
+
+                for (int i = 0; i < quantity; i++)
+                {
+                    Vector3 offset = new Vector3(Random.Range(-0.35f, 0.35f), 0.1f, Random.Range(-0.35f, 0.35f));
+                    GameObject loot = Instantiate(drop.item.worldPrefab, transform.position + offset, Quaternion.identity);
+                    var worldItem = loot.GetComponent<WorldItem>() ?? loot.GetComponentInChildren<WorldItem>();
+                    worldItem?.SetItemData(drop.item);
+                }
+            }
+        }
+
+        private void NotifyDeathOnce()
+        {
+            if (deathNotified)
+                return;
+
+            deathNotified = true;
+            OnDeath?.Invoke();
         }
 
         private void HookAnimationEvents()
@@ -773,7 +861,7 @@ namespace DungeonDredge.AI
 
         private void HandleDeathAnimationComplete()
         {
-            OnDeath?.Invoke();
+            NotifyDeathOnce();
         }
 
         #endregion

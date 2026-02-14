@@ -64,12 +64,14 @@ namespace DungeonDredge.UI
         private float currentThreatLevel = 0f;
         private float pulseTimer = 0f;
         private bool isStaminaVisible = false;
+        private float temporaryPromptTimer = 0f;
 
         private void Start()
         {
             // Subscribe to events
             EventBus.Subscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Subscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
+            EventBus.Subscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
 
             if (StealthManager.Instance != null)
             {
@@ -94,6 +96,7 @@ namespace DungeonDredge.UI
         {
             EventBus.Unsubscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Unsubscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
+            EventBus.Unsubscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
 
             if (StealthManager.Instance != null)
             {
@@ -112,7 +115,11 @@ namespace DungeonDredge.UI
             UpdateStealthEye();
             UpdateThreatPulse();
             UpdateStaminaVisibility();
-            UpdateInteractionCheck();
+            UpdateTemporaryPromptTimer();
+            if (temporaryPromptTimer <= 0f)
+            {
+                UpdateInteractionCheck();
+            }
         }
 
         #region Stealth Eye
@@ -277,9 +284,13 @@ namespace DungeonDredge.UI
             if (Camera.main == null) return;
 
             Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
-            if (Physics.Raycast(ray, out RaycastHit hit, 3f))
+            if (Physics.Raycast(ray, out RaycastHit hit, 3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
             {
                 IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+                if (interactable == null)
+                {
+                    interactable = hit.collider.GetComponentInParent<IInteractable>();
+                }
                 if (interactable != null)
                 {
                     ShowInteractionPrompt(interactable.GetInteractionPrompt());
@@ -287,9 +298,19 @@ namespace DungeonDredge.UI
                     
                     // Check for enemy target info
                     var enemy = hit.collider.GetComponent<AI.EnemyAI>();
+                    if (enemy == null)
+                    {
+                        enemy = hit.collider.GetComponentInParent<AI.EnemyAI>();
+                    }
                     if (enemy != null)
                     {
-                        ShowTargetInfo(enemy.EnemyName, enemy.Rank.ToString(), 1f);
+                        float healthRatio = 1f;
+                        var health = enemy.GetComponent<HealthComponent>() ?? enemy.GetComponentInParent<HealthComponent>();
+                        if (health != null && health.MaxHealth > 0f)
+                        {
+                            healthRatio = Mathf.Clamp01(health.CurrentHealth / health.MaxHealth);
+                        }
+                        ShowTargetInfo(enemy.EnemyName, enemy.Rank.ToString(), healthRatio);
                     }
                     else
                     {
@@ -313,6 +334,27 @@ namespace DungeonDredge.UI
             if (interactionText != null)
             {
                 interactionText.text = text;
+            }
+        }
+
+        private void OnInventoryFeedback(InventoryFeedbackEvent evt)
+        {
+            if (string.IsNullOrWhiteSpace(evt.Message))
+                return;
+
+            ShowInteractionPrompt(evt.Message);
+            temporaryPromptTimer = Mathf.Max(0.2f, evt.Duration);
+        }
+
+        private void UpdateTemporaryPromptTimer()
+        {
+            if (temporaryPromptTimer <= 0f)
+                return;
+
+            temporaryPromptTimer -= Time.deltaTime;
+            if (temporaryPromptTimer <= 0f)
+            {
+                HideInteractionPrompt();
             }
         }
 

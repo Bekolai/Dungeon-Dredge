@@ -7,8 +7,11 @@ namespace DungeonDredge.Inventory
 {
     public class PlayerInventory : MonoBehaviour
     {
+        private const float MaxAllowedWeightRatioForPickup = 1.4f;
+
         [Header("References")]
         [SerializeField] private BackpackData startingBackpack;
+        [SerializeField] private BackpackDatabase backpackDatabase;
         [SerializeField] private ItemDatabase itemDatabase;
         [SerializeField] private Transform dropPoint;
 
@@ -60,9 +63,15 @@ namespace DungeonDredge.Inventory
         private void Start()
         {
             // Initialize with starting backpack
-            if (startingBackpack != null)
+            BackpackData initialBackpack = startingBackpack;
+            if (initialBackpack == null && backpackDatabase != null)
             {
-                EquipBackpack(startingBackpack);
+                initialBackpack = backpackDatabase.GetStartingBackpack();
+            }
+
+            if (initialBackpack != null)
+            {
+                EquipBackpack(initialBackpack);
             }
 
             // Subscribe to weight changes
@@ -262,8 +271,31 @@ namespace DungeonDredge.Inventory
         {
             if (inventoryGrid == null || itemData == null) return false;
 
+            if (!CanPickupByWeight(itemData))
+            {
+                float capacity = GetCurrentWeightCapacity();
+                float projectedWeight = inventoryGrid.CurrentWeight + itemData.weight;
+                EventBus.Publish(new InventoryFeedbackEvent
+                {
+                    Message = $"Too overloaded to pick up {itemData.itemName} ({projectedWeight:F1}/{capacity:F1}kg)",
+                    Duration = 1.5f,
+                    IsWarning = true
+                });
+                return false;
+            }
+
             InventoryItem item = new InventoryItem(itemData);
-            return inventoryGrid.TryAddItemAuto(item);
+            bool added = inventoryGrid.TryAddItemAuto(item);
+            if (!added)
+            {
+                EventBus.Publish(new InventoryFeedbackEvent
+                {
+                    Message = "No room in backpack",
+                    Duration = 1.2f,
+                    IsWarning = true
+                });
+            }
+            return added;
         }
 
         public bool TryPickupItem(InventoryItem item)
@@ -282,7 +314,9 @@ namespace DungeonDredge.Inventory
                 if (item.itemData.worldPrefab != null)
                 {
                     Vector3 dropPos = dropPoint.position + dropPoint.forward;
-                    Instantiate(item.itemData.worldPrefab, dropPos, Quaternion.identity);
+                    GameObject dropped = Instantiate(item.itemData.worldPrefab, dropPos, Quaternion.identity);
+                    var worldItem = dropped.GetComponent<WorldItem>() ?? dropped.GetComponentInChildren<WorldItem>();
+                    worldItem?.SetItemData(item.itemData);
                 }
             }
         }
@@ -322,6 +356,20 @@ namespace DungeonDredge.Inventory
         }
 
         #endregion
+
+        private bool CanPickupByWeight(ItemData itemData)
+        {
+            float capacity = Mathf.Max(0.1f, GetCurrentWeightCapacity());
+            float projectedRatio = (inventoryGrid.CurrentWeight + itemData.weight) / capacity;
+            return projectedRatio <= MaxAllowedWeightRatioForPickup;
+        }
+
+        private float GetCurrentWeightCapacity()
+        {
+            if (playerStats != null)
+                return Mathf.Max(0.1f, playerStats.WeightCapacity);
+            return Mathf.Max(0.1f, inventoryGrid.MaxWeight);
+        }
     }
 
     [System.Serializable]

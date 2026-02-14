@@ -63,6 +63,7 @@ namespace DungeonDredge.Player
 
         // Components
         private CharacterController characterController;
+        private LanternController lanternController;
 
         private void Awake()
         {
@@ -73,6 +74,12 @@ namespace DungeonDredge.Player
             
             if (staminaSystem == null)
                 staminaSystem = GetComponent<StaminaSystem>();
+
+            lanternController = GetComponent<LanternController>();
+            if (lanternController == null)
+            {
+                lanternController = gameObject.AddComponent<LanternController>();
+            }
 
             if (cameraTransform == null)
                 cameraTransform = Camera.main?.transform;
@@ -249,6 +256,11 @@ namespace DungeonDredge.Player
         {
             if (playerMovement.IsGrounded && !playerMovement.IsCrouching) // Basic check before firing event/jump
             {
+                if (staminaSystem == null || !staminaSystem.TryUseJumpStamina())
+                {
+                    return;
+                }
+
                 OnJump?.Invoke();
                 playerMovement.TryJump();
             }
@@ -266,9 +278,15 @@ namespace DungeonDredge.Player
             if (cameraTransform == null) return;
 
             Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
-            if (Physics.Raycast(ray, out RaycastHit hit, interactionRange, interactionMask))
+            LayerMask effectiveMask = interactionMask.value == 0 ? Physics.DefaultRaycastLayers : interactionMask;
+            if (Physics.Raycast(ray, out RaycastHit hit, interactionRange, effectiveMask, QueryTriggerInteraction.Collide))
             {
                 IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+                if (interactable == null)
+                {
+                    // Many loot prefabs use child colliders, so resolve interaction from the parent hierarchy too.
+                    interactable = hit.collider.GetComponentInParent<IInteractable>();
+                }
                 if (interactable != null)
                 {
                     OnInteractTriggered?.Invoke();

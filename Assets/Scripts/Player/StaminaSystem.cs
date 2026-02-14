@@ -37,6 +37,7 @@ namespace DungeonDredge.Player
         public float MaxStamina => maxStamina;
         public float StaminaRatio => currentStamina / maxStamina;
         public bool CanSprint => currentStamina > minimumSprintStamina;
+        public bool CanJump => currentStamina >= jumpStaminaCost;
         public bool IsExhausted => currentStamina <= 0f;
 
         // Events
@@ -109,10 +110,11 @@ namespace DungeonDredge.Player
                 drainAmount = snailWalkDrainRate * Time.deltaTime;
             }
 
+            float previousStamina = currentStamina;
             currentStamina -= drainAmount;
             currentStamina = Mathf.Max(0f, currentStamina);
 
-            if (currentStamina <= 0f && !IsExhausted)
+            if (previousStamina > 0f && currentStamina <= 0f)
             {
                 OnStaminaDepleted?.Invoke();
                 AwardEnduranceXP();
@@ -156,11 +158,12 @@ namespace DungeonDredge.Player
 
         public void ConsumeStamina(float amount)
         {
+            float previousStamina = currentStamina;
             currentStamina -= amount;
             currentStamina = Mathf.Max(0f, currentStamina);
             timeSinceLastDrain = 0f;
 
-            if (currentStamina <= 0f)
+            if (previousStamina > 0f && currentStamina <= 0f)
             {
                 OnStaminaDepleted?.Invoke();
                 AwardEnduranceXP();
@@ -170,6 +173,15 @@ namespace DungeonDredge.Player
         public void UseJumpStamina()
         {
             ConsumeStamina(jumpStaminaCost);
+        }
+
+        public bool TryUseJumpStamina()
+        {
+            if (!CanJump)
+                return false;
+
+            UseJumpStamina();
+            return true;
         }
 
         private void AwardEnduranceXP()

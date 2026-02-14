@@ -113,6 +113,13 @@ namespace DungeonDredge.Core
         public int ItemCount;
     }
 
+    public struct InventoryFeedbackEvent
+    {
+        public string Message;
+        public float Duration;
+        public bool IsWarning;
+    }
+
     public enum StatType
     {
         Strength,

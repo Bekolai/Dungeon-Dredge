@@ -44,12 +44,27 @@ namespace DungeonDredge.Dungeon
         [Range(0f, 1f)]
         public float rareLootChance = 0.1f;
 
+        [Header("Mining Settings")]
+        [Range(0f, 1f)]
+        public float mineableSpawnChance = 0.45f;
+        public int minMineablesPerRoom = 0;
+        public int maxMineablesPerRoom = 2;
+        public GameObject[] mineablePrefabs;
+
         [Header("Visual Theme")]
         public Material floorMaterial;
         public Material wallMaterial;
         public Material ceilingMaterial;
         public Color ambientColor = Color.gray;
         public float ambientIntensity = 0.5f;
+
+        [Header("Atmosphere")]
+        [Tooltip("Override fog density for this rank (0 = use theme default). Higher = less visibility.")]
+        [Range(0f, 0.15f)]
+        public float atmosphereFogDensity = 0f;
+        [Tooltip("Override ambient intensity for this rank (0 = use theme default). Keep VERY low for darkness.")]
+        [Range(0f, 0.05f)]
+        public float atmosphereAmbientIntensity = 0f;
 
         [Header("Room Theme (Decorations)")]
         [Tooltip("Theme used for randomized room decorations")]
@@ -129,6 +144,9 @@ namespace DungeonDredge.Dungeon
                     settings.enemyDensity = 0.3f;
                     settings.maxEnemiesPerRoom = 2;
                     settings.rareLootChance = 0.05f;
+                    // Rank F: Dark but has more torches. Still need lantern.
+                    settings.atmosphereFogDensity = 0.035f;
+                    settings.atmosphereAmbientIntensity = 0.025f;
                     break;
 
                 case DungeonRank.E:
@@ -138,6 +156,9 @@ namespace DungeonDredge.Dungeon
                     settings.enemyDensity = 0.5f;
                     settings.maxEnemiesPerRoom = 3;
                     settings.rareLootChance = 0.1f;
+                    // Rank E: Very dark, thicker fog eats torch reach
+                    settings.atmosphereFogDensity = 0.045f;
+                    settings.atmosphereAmbientIntensity = 0.015f;
                     break;
 
                 case DungeonRank.D:
@@ -147,6 +168,9 @@ namespace DungeonDredge.Dungeon
                     settings.enemyDensity = 0.7f;
                     settings.maxEnemiesPerRoom = 4;
                     settings.rareLootChance = 0.2f;
+                    // Rank D: Near pitch black, heavy fog, lantern essential
+                    settings.atmosphereFogDensity = 0.06f;
+                    settings.atmosphereAmbientIntensity = 0.01f;
                     break;
 
                 case DungeonRank.C:
@@ -159,6 +183,9 @@ namespace DungeonDredge.Dungeon
                     settings.enemyDensity = 0.8f;
                     settings.maxEnemiesPerRoom = 5;
                     settings.rareLootChance = 0.3f;
+                    // High ranks: Pitch black. Fog swallows everything. Lantern or die.
+                    settings.atmosphereFogDensity = 0.08f;
+                    settings.atmosphereAmbientIntensity = 0.005f;
                     break;
             }
 
@@ -273,6 +300,15 @@ namespace DungeonDredge.Dungeon
                     null,
                     "Assets/Prefabs/DungeonCorridors/Corridor_Crossroads.prefab",
                     null);
+            }
+
+            if (mineablePrefabs == null || mineablePrefabs.Length == 0)
+            {
+                mineablePrefabs = LoadPrefabCandidates(
+                    "DungeonProps/MineableCrystal",
+                    "DungeonProps/MineableNode",
+                    "Assets/Prefabs/DungeonProps/MineableCrystal.prefab",
+                    "Assets/Prefabs/DungeonProps/MineableNode.prefab");
             }
         }
 

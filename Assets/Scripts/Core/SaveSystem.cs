@@ -160,10 +160,7 @@ namespace DungeonDredge.Core
             {
                 // Need references to databases
                 var backpackDb = Resources.Load<BackpackDatabase>("BackpackDatabase");
-                if (backpackDb != null)
-                {
-                    playerInventory.LoadSaveData(data.inventory, backpackDb);
-                }
+                playerInventory.LoadSaveData(data.inventory, backpackDb);
             }
 
             // Shop/currency

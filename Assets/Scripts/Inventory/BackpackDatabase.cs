@@ -9,12 +9,63 @@ namespace DungeonDredge.Inventory
         [SerializeField] private List<BackpackData> backpacks = new List<BackpackData>();
 
         private Dictionary<string, BackpackData> backpackLookup;
+        private bool generatedRuntimeDefaults;
 
         public IReadOnlyList<BackpackData> AllBackpacks => backpacks;
 
         private void OnEnable()
         {
+            EnsureBackpackProgression();
             BuildLookup();
+        }
+
+        private void EnsureBackpackProgression()
+        {
+            backpacks.RemoveAll(b => b == null);
+            backpacks.Sort((a, b) => a.upgradeLevel.CompareTo(b.upgradeLevel));
+
+            if (backpacks.Count == 0)
+            {
+                GenerateRuntimeDefaults();
+            }
+
+            // Auto-link upgrade chain by level order when it is missing or inconsistent.
+            for (int i = 0; i < backpacks.Count; i++)
+            {
+                BackpackData current = backpacks[i];
+                BackpackData expectedNext = i < backpacks.Count - 1 ? backpacks[i + 1] : null;
+                if (current.nextUpgrade != expectedNext)
+                {
+                    current.nextUpgrade = expectedNext;
+                }
+            }
+        }
+
+        private void GenerateRuntimeDefaults()
+        {
+            if (generatedRuntimeDefaults)
+                return;
+
+            generatedRuntimeDefaults = true;
+            backpacks = new List<BackpackData>
+            {
+                CreateRuntimeBackpack("bp_rank_f", "Rank F Pack", 6, 4, 1, 0),
+                CreateRuntimeBackpack("bp_rank_e", "Rank E Pack", 7, 5, 2, 800),
+                CreateRuntimeBackpack("bp_rank_d", "Rank D Pack", 8, 6, 3, 1600)
+            };
+        }
+
+        private static BackpackData CreateRuntimeBackpack(string id, string displayName, int width, int height, int level, int cost)
+        {
+            BackpackData data = CreateInstance<BackpackData>();
+            data.backpackId = id;
+            data.backpackName = displayName;
+            data.gridWidth = width;
+            data.gridHeight = height;
+            data.upgradeLevel = level;
+            data.upgradeCost = cost;
+            data.description = $"Runtime default backpack for {displayName}.";
+            return data;
         }
 
         private void BuildLookup()
@@ -40,11 +91,13 @@ namespace DungeonDredge.Inventory
 
         public BackpackData GetStartingBackpack()
         {
+            EnsureBackpackProgression();
             return backpacks.Count > 0 ? backpacks[0] : null;
         }
 
         public BackpackData GetBackpackByLevel(int level)
         {
+            EnsureBackpackProgression();
             foreach (var backpack in backpacks)
             {
                 if (backpack.upgradeLevel == level)

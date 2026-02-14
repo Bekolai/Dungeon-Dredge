@@ -35,6 +35,9 @@ namespace DungeonDredge.Dungeon
         [Header("Enemy Prefabs")]
         [SerializeField] private GameObject[] enemyPrefabs;
 
+        [Header("Atmosphere")]
+        [SerializeField] private DungeonAtmosphere dungeonAtmosphere;
+
         [Header("Generation")]
         [SerializeField] private Transform dungeonParent;
         [SerializeField]  private NavMeshSurface navMeshSurface;
@@ -122,6 +125,9 @@ namespace DungeonDredge.Dungeon
 
             // Spawn enemies (after NavMesh is ready for AI agents)
             PopulateRoomsEnemies();
+
+            // Apply dungeon atmosphere (dark ambient, fog, torch lighting)
+            ApplyAtmosphere();
 
             OnDungeonGenerated?.Invoke();
         }
@@ -679,11 +685,13 @@ namespace DungeonDredge.Dungeon
                 {
                     case RoomType.Loot:
                         room.SpawnLoot(itemDatabase, settings);
+                        room.SpawnMineables(settings, itemDatabase);
                         break;
 
                     case RoomType.Enemy:
                  /*        room.SpawnEnemies(enemyPrefabs, settings); */
                         room.SpawnLoot(itemDatabase, settings);
+                        room.SpawnMineables(settings, itemDatabase);
                         break;
 
                     case RoomType.Empty:
@@ -692,6 +700,7 @@ namespace DungeonDredge.Dungeon
                         {
                             room.SpawnLoot(itemDatabase, settings);
                         }
+                        room.SpawnMineables(settings, itemDatabase);
                         break;
 
                     case RoomType.Boss:
@@ -702,6 +711,7 @@ namespace DungeonDredge.Dungeon
                         {
                             room.SpawnLoot(itemDatabase, settings);
                         }
+                        room.SpawnMineables(settings, itemDatabase);
                         break;
                 }
             }
@@ -779,6 +789,27 @@ namespace DungeonDredge.Dungeon
 
         #endregion
 
+        #region Atmosphere
+
+        private void ApplyAtmosphere()
+        {
+            // Create or find atmosphere component
+            if (dungeonAtmosphere == null)
+            {
+                dungeonAtmosphere = GetComponent<DungeonAtmosphere>();
+            }
+            if (dungeonAtmosphere == null)
+            {
+                dungeonAtmosphere = gameObject.AddComponent<DungeonAtmosphere>();
+            }
+
+            // Apply using the theme and rank-specific settings
+            RoomTheme theme = settings?.roomTheme;
+            dungeonAtmosphere.ApplyFromTheme(theme, settings);
+        }
+
+        #endregion
+
         #region Cleanup
 
         public void ClearDungeon()
@@ -815,6 +846,12 @@ namespace DungeonDredge.Dungeon
                 {
                     Destroy(child.gameObject);
                 }
+            }
+
+            // Restore atmosphere to original scene settings
+            if (dungeonAtmosphere != null)
+            {
+                dungeonAtmosphere.RestoreOriginalSettings();
             }
 
             // Notify StealthManager to clear enemies
