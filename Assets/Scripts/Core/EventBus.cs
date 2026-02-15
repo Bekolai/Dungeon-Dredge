@@ -120,6 +120,14 @@ namespace DungeonDredge.Core
         public bool IsWarning;
     }
 
+    public struct HealthChangedEvent
+    {
+        public float CurrentHealth;
+        public float MaxHealth;
+        public float Ratio;
+        public bool IsPlayer;
+    }
+
     public enum StatType
     {
         Strength,

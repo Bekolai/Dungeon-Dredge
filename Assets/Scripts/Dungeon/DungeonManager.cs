@@ -2,6 +2,7 @@ using UnityEngine;
 using DungeonDredge.Core;
 using DungeonDredge.Inventory;
 using DungeonDredge.Player;
+using DungeonDredge.Tools;
 
 namespace DungeonDredge.Dungeon
 {
@@ -18,6 +19,8 @@ namespace DungeonDredge.Dungeon
 
         [Header("Player")]
         [SerializeField] private GameObject playerPrefab;
+        [SerializeField] private BackpackData startingBackpack;
+        [SerializeField] private BackpackDatabase backpackDatabase;
 
         // State
         private GameObject currentPlayer;
@@ -27,10 +30,17 @@ namespace DungeonDredge.Dungeon
         public DungeonRank CurrentRank => currentRank;
         public bool IsDungeonActive => dungeonActive;
         public DungeonGenerator Generator => generator;
+        public GameObject CurrentPlayer => currentPlayer;
 
         // Events
         public System.Action<DungeonRank> OnDungeonStarted;
         public System.Action<bool> OnDungeonEnded; // bool = extracted successfully
+
+        /// <summary>
+        /// Fired after the player is spawned/found and all components are ensured.
+        /// UI scripts should subscribe to this to find player references.
+        /// </summary>
+        public static event System.Action<GameObject> OnPlayerSpawned;
 
         private void Awake()
         {
@@ -179,6 +189,70 @@ namespace DungeonDredge.Dungeon
                 {
                     currentPlayer.transform.position = spawnPos;
                 }
+            }
+
+            // Ensure the player has all required components
+            EnsurePlayerComponents();
+
+            // Notify UI and other systems that the player is ready
+            OnPlayerSpawned?.Invoke(currentPlayer);
+        }
+
+        /// <summary>
+        /// Ensures the player has PlayerInventory, PlayerStats, and ToolManager.
+        /// Adds them at runtime if missing from the prefab.
+        /// </summary>
+        private void EnsurePlayerComponents()
+        {
+            if (currentPlayer == null) return;
+
+            // PlayerStats
+            var stats = currentPlayer.GetComponent<PlayerStats>();
+            if (stats == null)
+            {
+                stats = currentPlayer.AddComponent<PlayerStats>();
+                Debug.Log("[DungeonManager] Added PlayerStats to player at runtime.");
+            }
+
+            // PlayerInventory (needs InventoryGrid as a child)
+            var inventory = currentPlayer.GetComponent<PlayerInventory>();
+            if (inventory == null)
+            {
+                // Create InventoryGrid child object first (so PlayerInventory.Awake finds it)
+                var gridGO = new GameObject("InventoryGrid");
+                gridGO.transform.SetParent(currentPlayer.transform, false);
+                var grid = gridGO.AddComponent<InventoryGrid>();
+
+                inventory = currentPlayer.AddComponent<PlayerInventory>();
+                Debug.Log("[DungeonManager] Added PlayerInventory to player at runtime.");
+            }
+
+            // Ensure the grid reference is set (PlayerInventory.Awake should find it,
+            // but if it was already on the prefab without the grid wired, fix it here)
+            if (inventory.Grid == null)
+            {
+                var grid = currentPlayer.GetComponentInChildren<InventoryGrid>();
+                if (grid == null)
+                {
+                    var gridGO = new GameObject("InventoryGrid");
+                    gridGO.transform.SetParent(currentPlayer.transform, false);
+                    grid = gridGO.AddComponent<InventoryGrid>();
+                }
+                // Use reflection to set the private serialized field
+                var field = typeof(PlayerInventory).GetField("inventoryGrid",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                field?.SetValue(inventory, grid);
+                Debug.Log("[DungeonManager] Wired InventoryGrid reference on PlayerInventory.");
+            }
+
+            // ToolManager
+            var toolManager = currentPlayer.GetComponentInChildren<ToolManager>();
+            if (toolManager == null)
+            {
+                var toolGO = new GameObject("ToolManager");
+                toolGO.transform.SetParent(currentPlayer.transform, false);
+                toolManager = toolGO.AddComponent<ToolManager>();
+                Debug.Log("[DungeonManager] Added ToolManager to player at runtime.");
             }
         }
 

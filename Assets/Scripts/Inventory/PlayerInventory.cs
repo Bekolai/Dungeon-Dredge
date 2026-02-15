@@ -22,6 +22,8 @@ namespace DungeonDredge.Inventory
         [Header("Input")]
         [SerializeField] private InputActionReference dropBackpackAction;
         [SerializeField] private InputActionReference openInventoryAction;
+        [Tooltip("Fallback key for inventory toggle if no InputActionReference is assigned")]
+        [SerializeField] private Key inventoryFallbackKey = Key.Tab;
 
         // State
         private BackpackData currentBackpack;
@@ -31,6 +33,7 @@ namespace DungeonDredge.Inventory
         // References
         private PlayerMovement playerMovement;
         private PlayerStats playerStats;
+        private PlayerController playerController;
 
         // Properties
         public InventoryGrid Grid => inventoryGrid;
@@ -46,6 +49,7 @@ namespace DungeonDredge.Inventory
 
         private void Awake()
         {
+            playerController = GetComponent<PlayerController>();
             playerMovement = GetComponent<PlayerMovement>();
             playerStats = GetComponent<PlayerStats>();
 
@@ -111,6 +115,27 @@ namespace DungeonDredge.Inventory
             if (inventoryGrid != null)
             {
                 inventoryGrid.OnWeightChanged -= OnWeightChanged;
+            }
+        }
+
+        private void Update()
+        {
+            // Fallback keyboard toggle if no InputActionReference assigned
+            if (openInventoryAction == null || openInventoryAction.action == null)
+            {
+                if (Keyboard.current != null && Keyboard.current[inventoryFallbackKey].wasPressedThisFrame)
+                {
+                    if (inventoryOpen)
+                        CloseInventory();
+                    else
+                        OpenInventory();
+                }
+            }
+
+            // Always allow Escape to close inventory
+            if (inventoryOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                CloseInventory();
             }
         }
 
@@ -243,9 +268,13 @@ namespace DungeonDredge.Inventory
 
             inventoryOpen = true;
             
-            // Unlock cursor
+            // Unlock cursor for UI interaction
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+
+            // Disable player movement and look
+            if (playerController != null)
+                playerController.SetInputEnabled(false);
 
             OnInventoryOpened?.Invoke();
         }
@@ -256,9 +285,13 @@ namespace DungeonDredge.Inventory
 
             inventoryOpen = false;
 
-            // Lock cursor
+            // Lock cursor back for gameplay
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+
+            // Re-enable player movement and look
+            if (playerController != null)
+                playerController.SetInputEnabled(true);
 
             OnInventoryClosed?.Invoke();
         }
@@ -269,7 +302,17 @@ namespace DungeonDredge.Inventory
 
         public bool TryPickupItem(ItemData itemData)
         {
-            if (inventoryGrid == null || itemData == null) return false;
+            if (inventoryGrid == null)
+            {
+                // Last-resort attempt to find the grid
+                inventoryGrid = GetComponentInChildren<InventoryGrid>();
+                if (inventoryGrid == null)
+                {
+                    Debug.LogWarning("[PlayerInventory] Cannot pick up item - no InventoryGrid found!");
+                    return false;
+                }
+            }
+            if (itemData == null) return false;
 
             if (!CanPickupByWeight(itemData))
             {

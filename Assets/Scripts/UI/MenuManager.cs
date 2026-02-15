@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DungeonDredge.Core;
+using DungeonDredge.Inventory;
 
 namespace DungeonDredge.UI
 {
@@ -266,6 +267,14 @@ namespace DungeonDredge.UI
         {
             if (GameManager.Instance == null) return;
 
+            // If inventory is open, let PlayerInventory handle the Escape key (close inventory first)
+            var playerInv = FindAnyObjectByType<PlayerInventory>();
+            if (playerInv != null && playerInv.IsInventoryOpen)
+            {
+                // PlayerInventory.Update() will handle closing via Escape
+                return;
+            }
+
             if (GameManager.Instance.CurrentState == GameState.Paused)
             {
                 OnResume();
@@ -274,6 +283,7 @@ namespace DungeonDredge.UI
                      GameManager.Instance.CurrentState == GameState.Village)
             {
                 GameManager.Instance.PauseGame();
+                ShowPauseMenu();
             }
         }
 
@@ -283,14 +293,14 @@ namespace DungeonDredge.UI
 
         private void OnMouseSensitivityChanged(float value)
         {
-            var player = FindObjectOfType<Player.PlayerController>();
+            var player = FindAnyObjectByType<Player.PlayerController>();
             player?.SetMouseSensitivity(value);
             PlayerPrefs.SetFloat("MouseSensitivity", value);
         }
 
         private void OnInvertYChanged(bool value)
         {
-            var player = FindObjectOfType<Player.PlayerController>();
+            var player = FindAnyObjectByType<Player.PlayerController>();
             player?.SetInvertY(value);
             PlayerPrefs.SetInt("InvertY", value ? 1 : 0);
         }

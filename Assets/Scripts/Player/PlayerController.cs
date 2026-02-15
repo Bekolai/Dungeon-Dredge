@@ -24,7 +24,13 @@ namespace DungeonDredge.Player
 
         [Header("Interaction")]
         [SerializeField] private float interactionRange = 3f;
+        [Tooltip("Leave at 'Nothing' (0) to use all layers. Set to specific layers to filter.")]
         [SerializeField] private LayerMask interactionMask;
+
+        // Expose so HUD can use the same settings
+        public float InteractionRange => interactionRange;
+        public LayerMask EffectiveInteractionMask => 
+            interactionMask.value == 0 ? (LayerMask)Physics.DefaultRaycastLayers : interactionMask;
 
         [Header("Shove Mechanics")]
         [SerializeField] private float shoveForce = 10f;
@@ -349,6 +355,28 @@ namespace DungeonDredge.Player
             {
                 Debug.Log("Shove hit!");
                 // Optional: Camera shake or hit sound
+            }
+        }
+
+        /// <summary>
+        /// Enable or disable player input (movement, look, interaction).
+        /// Used when UI panels (inventory, menus) are open.
+        /// </summary>
+        public void SetInputEnabled(bool enabled)
+        {
+            if (playerActionMap == null) return;
+
+            if (enabled)
+            {
+                playerActionMap.Enable();
+            }
+            else
+            {
+                playerActionMap.Disable();
+                // Zero out inputs so the player stops moving
+                moveInput = Vector2.zero;
+                lookInput = Vector2.zero;
+                sprintInput = false;
             }
         }
 

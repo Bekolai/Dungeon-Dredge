@@ -5,6 +5,7 @@ using DungeonDredge.Core;
 using DungeonDredge.Player;
 using DungeonDredge.Inventory;
 using DungeonDredge.Tools;
+using DungeonDredge.Dungeon;
 
 namespace DungeonDredge.UI
 {
@@ -15,11 +16,26 @@ namespace DungeonDredge.UI
         [SerializeField] private StaminaSystem staminaSystem;
         [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private ToolManager toolManager;
+        private PlayerController playerController;
+
+        [Header("HP Bar")]
+        [SerializeField] private Slider hpSlider;
+        [SerializeField] private Image hpFill;
+        [SerializeField] private TextMeshProUGUI hpText;
+        [SerializeField] private Color healthyColor = new Color(0.8f, 0.2f, 0.2f);
+        [SerializeField] private Color criticalColor = new Color(0.4f, 0f, 0f);
 
         [Header("Stealth Eye")]
         [SerializeField] private Image stealthEyeImage;
         [SerializeField] private Sprite[] eyeSprites; // Closed to open states
         [SerializeField] private float eyeUpdateSpeed = 5f;
+
+        [Header("Stealth Noise Bar")]
+        [SerializeField] private Slider noiseSlider;
+        [SerializeField] private Image noiseFill;
+        [SerializeField] private CanvasGroup noiseBarGroup;
+        [SerializeField] private Color quietNoiseColor = new Color(0.3f, 0.7f, 0.3f);
+        [SerializeField] private Color loudNoiseColor = new Color(0.9f, 0.2f, 0.2f);
 
         [Header("Threat Pulse")]
         [SerializeField] private Image threatVignette;
@@ -61,6 +77,7 @@ namespace DungeonDredge.UI
 
         // State
         private float currentEyeLevel = 0f;
+        private float currentNoiseLevel = 0f;
         private float currentThreatLevel = 0f;
         private float pulseTimer = 0f;
         private bool isStaminaVisible = false;
@@ -68,7 +85,8 @@ namespace DungeonDredge.UI
 
         private void Start()
         {
-            // Subscribe to events
+            // Subscribe to EventBus events (these work without player ref)
+            EventBus.Subscribe<HealthChangedEvent>(OnHealthChanged);
             EventBus.Subscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Subscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
             EventBus.Subscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
@@ -79,14 +97,17 @@ namespace DungeonDredge.UI
                 StealthManager.Instance.OnThreatDetected += OnThreatDetected;
             }
 
-            if (toolManager != null)
-            {
-                toolManager.OnSlotChanged += OnToolSlotChanged;
-            }
+            // Subscribe to player spawn event for runtime reference finding
+            DungeonManager.OnPlayerSpawned += OnPlayerSpawned;
+
+            // Try to find player now (may already exist)
+            TryFindPlayerReferences();
 
             // Initialize UI
+            UpdateHPUI(1f, 100f, 100f);
             UpdateWeightUI(0f);
             UpdateStaminaUI(1f, 100f, 100f);
+            UpdateNoiseUI(0f);
             UpdateToolSlots();
             HideTargetInfo();
             HideInteractionPrompt();
@@ -94,9 +115,12 @@ namespace DungeonDredge.UI
 
         private void OnDestroy()
         {
+            EventBus.Unsubscribe<HealthChangedEvent>(OnHealthChanged);
             EventBus.Unsubscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Unsubscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
             EventBus.Unsubscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
+
+            DungeonManager.OnPlayerSpawned -= OnPlayerSpawned;
 
             if (StealthManager.Instance != null)
             {
@@ -110,9 +134,49 @@ namespace DungeonDredge.UI
             }
         }
 
+        /// <summary>
+        /// Called when DungeonManager spawns the player at runtime.
+        /// </summary>
+        private void OnPlayerSpawned(GameObject player)
+        {
+            TryFindPlayerReferences(player);
+        }
+
+        /// <summary>
+        /// Find player component references at runtime.
+        /// </summary>
+        private void TryFindPlayerReferences(GameObject player = null)
+        {
+            if (player == null)
+            {
+                player = GameObject.FindGameObjectWithTag("Player");
+            }
+            if (player == null) return;
+
+            if (playerController == null)
+                playerController = player.GetComponent<PlayerController>();
+            if (playerMovement == null)
+                playerMovement = player.GetComponent<PlayerMovement>();
+            if (staminaSystem == null)
+                staminaSystem = player.GetComponent<StaminaSystem>();
+            if (playerInventory == null)
+                playerInventory = player.GetComponent<PlayerInventory>();
+            if (toolManager == null)
+                toolManager = player.GetComponentInChildren<ToolManager>();
+
+            // Re-subscribe to tool manager events
+            if (toolManager != null)
+            {
+                toolManager.OnSlotChanged -= OnToolSlotChanged; // prevent double
+                toolManager.OnSlotChanged += OnToolSlotChanged;
+                UpdateToolSlots();
+            }
+        }
+
         private void Update()
         {
             UpdateStealthEye();
+            UpdateStealthNoiseBar();
             UpdateThreatPulse();
             UpdateStaminaVisibility();
             UpdateTemporaryPromptTimer();
@@ -121,6 +185,34 @@ namespace DungeonDredge.UI
                 UpdateInteractionCheck();
             }
         }
+
+        #region HP Bar
+
+        private void OnHealthChanged(HealthChangedEvent evt)
+        {
+            if (!evt.IsPlayer) return;
+            UpdateHPUI(evt.Ratio, evt.CurrentHealth, evt.MaxHealth);
+        }
+
+        private void UpdateHPUI(float ratio, float current, float max)
+        {
+            if (hpSlider != null)
+            {
+                hpSlider.value = ratio;
+            }
+
+            if (hpFill != null)
+            {
+                hpFill.color = Color.Lerp(criticalColor, healthyColor, ratio);
+            }
+
+            if (hpText != null)
+            {
+                hpText.text = $"{Mathf.CeilToInt(current)}/{Mathf.CeilToInt(max)}";
+            }
+        }
+
+        #endregion
 
         #region Stealth Eye
 
@@ -143,6 +235,49 @@ namespace DungeonDredge.UI
         private void OnNoiseChanged(float noiseLevel)
         {
             // Eye will update in Update()
+            // Also update the noise bar target
+            currentNoiseLevel = noiseLevel;
+        }
+
+        #endregion
+
+        #region Stealth Noise Bar
+
+        private void UpdateStealthNoiseBar()
+        {
+            float targetNoise = StealthManager.Instance?.NoiseRatio ?? 0f;
+            float smoothNoise = noiseSlider != null ? 
+                Mathf.Lerp(noiseSlider.value, targetNoise, Time.deltaTime * eyeUpdateSpeed) : 0f;
+
+            UpdateNoiseUI(smoothNoise);
+
+            // Auto-hide the noise BAR only (not the eye icon) when quiet
+            // noiseBarGroup should be assigned to the noise slider's own CanvasGroup,
+            // not the parent that also contains the eye icon
+            if (noiseBarGroup != null)
+            {
+                float targetAlpha = targetNoise > 0.01f ? 1f : 0f;
+                noiseBarGroup.alpha = Mathf.Lerp(noiseBarGroup.alpha, targetAlpha, Time.deltaTime * 3f);
+            }
+
+            // Eye is always visible - ensure it stays enabled
+            if (stealthEyeImage != null && !stealthEyeImage.gameObject.activeSelf)
+            {
+                stealthEyeImage.gameObject.SetActive(true);
+            }
+        }
+
+        private void UpdateNoiseUI(float noiseRatio)
+        {
+            if (noiseSlider != null)
+            {
+                noiseSlider.value = noiseRatio;
+            }
+
+            if (noiseFill != null)
+            {
+                noiseFill.color = Color.Lerp(quietNoiseColor, loudNoiseColor, noiseRatio);
+            }
         }
 
         #endregion
@@ -283,8 +418,12 @@ namespace DungeonDredge.UI
         {
             if (Camera.main == null) return;
 
+            // Use the same range and layer mask as the PlayerController so prompt matches actual interaction
+            float range = playerController != null ? playerController.InteractionRange : 3f;
+            int mask = playerController != null ? playerController.EffectiveInteractionMask : Physics.DefaultRaycastLayers;
+
             Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
-            if (Physics.Raycast(ray, out RaycastHit hit, 3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+            if (Physics.Raycast(ray, out RaycastHit hit, range, mask, QueryTriggerInteraction.Collide))
             {
                 IInteractable interactable = hit.collider.GetComponent<IInteractable>();
                 if (interactable == null)
@@ -293,7 +432,18 @@ namespace DungeonDredge.UI
                 }
                 if (interactable != null)
                 {
-                    ShowInteractionPrompt(interactable.GetInteractionPrompt());
+                    string prompt = interactable.GetInteractionPrompt();
+
+                    // Skip empty prompts (e.g. archway doors that are always open)
+                    if (string.IsNullOrEmpty(prompt))
+                    {
+                        HideInteractionPrompt();
+                        SetCrosshairInteract(false);
+                        HideTargetInfo();
+                        return;
+                    }
+
+                    ShowInteractionPrompt(prompt);
                     SetCrosshairInteract(true);
                     
                     // Check for enemy target info

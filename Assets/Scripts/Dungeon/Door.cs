@@ -74,7 +74,7 @@ namespace DungeonDredge.Dungeon
             if (doorMode == DoorMode.Archway)
             {
                 isOpen = true;
-               /*  if (doorPanel != null) doorPanel.SetActive(false); */
+                if (doorPanel != null) doorPanel.SetActive(false);
                 UpdateNavMeshObstacle();
                 return;
             }
@@ -91,9 +91,31 @@ namespace DungeonDredge.Dungeon
 
             UpdateNavMeshObstacle();
             
-            // Find player for auto-open
-            var player = FindObjectOfType<PlayerController>();
-            if (player != null) playerTransform = player.transform;
+            // Find player for auto-open (may be spawned later at runtime)
+            var player = FindAnyObjectByType<PlayerController>();
+            if (player != null)
+            {
+                playerTransform = player.transform;
+            }
+            else
+            {
+                // Player is spawned at runtime - subscribe to event
+                DungeonManager.OnPlayerSpawned += OnPlayerSpawned;
+            }
+        }
+
+        private void OnPlayerSpawned(GameObject player)
+        {
+            if (player != null)
+            {
+                playerTransform = player.transform;
+            }
+            DungeonManager.OnPlayerSpawned -= OnPlayerSpawned;
+        }
+
+        private void OnDestroy()
+        {
+            DungeonManager.OnPlayerSpawned -= OnPlayerSpawned;
         }
 
         private void Update()
@@ -152,7 +174,8 @@ namespace DungeonDredge.Dungeon
             if (doorMode == DoorMode.Archway) return "";
             if (doorMode == DoorMode.AutoOpen) return "";
             if (isLocked) return "Locked";
-            return isOpen ? "Close Door" : "Open Door";
+          /*   return isOpen ? "Close Door" : "Open Door"; */
+          return null;
         }
 
         public bool CanInteract()
@@ -232,10 +255,10 @@ namespace DungeonDredge.Dungeon
             }
             else if (mode == DoorMode.Archway)
             {
-                // Open passage
+                // Open passage - hide the door panel entirely for archways
                 isOpen = true;
                 isLocked = false;
-                if (doorPanel != null) doorPanel.SetActive(true);
+                if (doorPanel != null) doorPanel.SetActive(false);
                 if (wallFiller != null) wallFiller.SetActive(false);
             }
             else if (mode == DoorMode.Locked)

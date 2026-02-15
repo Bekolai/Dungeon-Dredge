@@ -29,7 +29,7 @@ namespace DungeonDredge.Inventory
             startPosition = transform.position;
 
             // Ensure loot is always raycastable even if a prefab forgot colliders.
-            if (GetComponentInChildren<Collider>() == null)
+            if (GetComponentInChildren<Collider>() == null && GetComponent<Collider>() == null)
             {
                 gameObject.AddComponent<SphereCollider>();
             }
@@ -47,6 +47,16 @@ namespace DungeonDredge.Inventory
                     main.startColor = ItemData.GetRarityColor(itemData.rarity);
                 }
             }
+            if(meshRenderer==null){
+                meshRenderer = GetComponent<MeshRenderer>();
+                if(meshRenderer==null){
+                    meshRenderer = GetComponentInChildren<MeshRenderer>();
+                }
+                if(meshRenderer==null){
+                    meshRenderer = GetComponentInParent<MeshRenderer>();
+                }
+            }
+            gameObject.layer = LayerMask.NameToLayer("Interactable");
         }
 
         private void Update()

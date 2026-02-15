@@ -190,20 +190,88 @@ namespace DungeonDredge.Dungeon
                 
                 // Get random item for this rank
                 ItemData itemData = itemDatabase.GetRandomItem(settings.rank);
-                if (itemData?.worldPrefab != null)
-                {
-                    GameObject loot = Instantiate(itemData.worldPrefab, spawnPoint.position, spawnPoint.rotation);
-                    
-                    // Set item data
-                    var worldItem = loot.GetComponent<WorldItem>();
-                    if (worldItem != null)
-                    {
-                        worldItem.SetItemData(itemData);
-                    }
+                if (itemData == null) continue;
 
-                    spawnedLoot.Add(loot);
+                GameObject loot;
+
+                if (itemData.worldPrefab != null)
+                {
+                    loot = Instantiate(itemData.worldPrefab, spawnPoint.position, spawnPoint.rotation);
                 }
+                else
+                {
+                    // Create a generic loot object when no world prefab exists
+                    loot = CreateGenericLootObject(itemData, spawnPoint);
+                }
+
+                // Ensure the loot object has a WorldItem component (many prefabs are just models)
+                var worldItem = loot.GetComponent<WorldItem>()
+                             ?? loot.GetComponentInChildren<WorldItem>();
+                if (worldItem == null)
+                {
+                    worldItem = loot.AddComponent<WorldItem>();
+                }
+                worldItem.SetItemData(itemData);
+
+                // Ensure there's a collider for the interaction raycast
+                if (loot.GetComponentInChildren<Collider>() == null)
+                {
+                    var col = loot.AddComponent<SphereCollider>();
+                    col.radius = 0.3f;
+                    col.isTrigger = false;
+                }
+
+                spawnedLoot.Add(loot);
             }
+        }
+
+        /// <summary>
+        /// Creates a simple visual loot object when no world prefab is assigned to an ItemData.
+        /// Uses a small primitive mesh colored by rarity.
+        /// </summary>
+        private static GameObject CreateGenericLootObject(ItemData itemData, Transform spawnPoint)
+        {
+            // Create root object
+            GameObject lootObj = new GameObject($"Loot_{itemData.itemName}");
+            lootObj.transform.position = spawnPoint.position + Vector3.up * 0.3f;
+            lootObj.transform.rotation = Quaternion.identity;
+
+            // Add WorldItem (makes it interactable / lootable)
+            var worldItem = lootObj.AddComponent<WorldItem>();
+            worldItem.SetItemData(itemData);
+
+            // Visual mesh child
+            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "Visual";
+            visual.transform.SetParent(lootObj.transform, false);
+            visual.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
+
+            // Remove the auto-generated collider from the primitive (we'll use our own on the root)
+            var primitiveCollider = visual.GetComponent<Collider>();
+            if (primitiveCollider != null) Object.Destroy(primitiveCollider);
+
+            // Color by rarity
+            var renderer = visual.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                Color rarityColor = ItemData.GetRarityColor(itemData.rarity);
+                // Clone the default material and tint it by rarity
+                var mat = new Material(renderer.sharedMaterial);
+                mat.color = rarityColor;
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", rarityColor * 0.3f);
+                }
+                renderer.material = mat;
+            }
+
+            // Add collider for interaction raycast (non-trigger so raycast hits it)
+            var collider = lootObj.AddComponent<SphereCollider>();
+            collider.radius = 0.3f;
+            collider.isTrigger = false;
+
+            return lootObj;
         }
 
         public void SpawnEnemies(GameObject[] enemyPrefabs, DungeonSettings settings)

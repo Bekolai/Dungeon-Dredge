@@ -302,6 +302,209 @@ namespace DungeonDredge.Inventory
         }
 
         /// <summary>
+        /// Try to swap two items: place draggedItem at targetPosition, and move the item
+        /// currently there to draggedItem's old position. Both items must already be in the grid.
+        /// The draggedItem should already be removed from the grid before calling this.
+        /// </summary>
+        /// <param name="draggedItem">The item being dragged (already removed from grid).</param>
+        /// <param name="targetPosition">Where the dragged item wants to go.</param>
+        /// <param name="draggedOldPosition">Where the dragged item was before the drag started.</param>
+        /// <param name="swappedOut">The item that was swapped out, if successful.</param>
+        /// <returns>True if the swap succeeded.</returns>
+        public bool TrySwapItems(InventoryItem draggedItem, Vector2Int targetPosition,
+            Vector2Int draggedOldPosition, out InventoryItem swappedOut)
+        {
+            swappedOut = null;
+
+            // Find the single unique item occupying the target area
+            InventoryItem targetItem = GetSingleOccupyingItem(draggedItem, targetPosition);
+            if (targetItem == null) return false;
+
+            // Temporarily remove the target item from the grid
+            var targetOldPos = targetItem.gridPosition;
+            var targetOldRotated = targetItem.isRotated;
+
+            ClearItemFromGrid(targetItem);
+
+            // Check if dragged item fits at target position
+            if (!CanPlaceItem(draggedItem, targetPosition))
+            {
+                // Restore target item
+                PlaceItemOnGrid(targetItem, targetOldPos);
+                return false;
+            }
+
+            // Check if target item fits at the dragged item's old position
+            if (!CanPlaceItemIgnoring(targetItem, draggedOldPosition, draggedItem))
+            {
+                // Restore target item
+                PlaceItemOnGrid(targetItem, targetOldPos);
+                return false;
+            }
+
+            // Both fit! Do the swap.
+            PlaceItemOnGrid(draggedItem, targetPosition);
+            PlaceItemOnGrid(targetItem, draggedOldPosition);
+
+            swappedOut = targetItem;
+            return true;
+        }
+
+        /// <summary>
+        /// Check if a swap would be possible without actually performing it.
+        /// Returns the item that would be swapped if successful.
+        /// </summary>
+        public bool CanSwapItems(InventoryItem draggedItem, Vector2Int targetPosition,
+            Vector2Int draggedOldPosition, out InventoryItem swapTarget)
+        {
+            swapTarget = null;
+
+            // Find the single unique item occupying the target area
+            InventoryItem targetItem = GetSingleOccupyingItem(draggedItem, targetPosition);
+            if (targetItem == null) return false;
+
+            // Save target item's original position
+            Vector2Int savedTargetPos = targetItem.gridPosition;
+
+            // Temporarily clear target item's cells
+            ClearItemFromGrid(targetItem);
+
+            // Check if dragged item fits at target position (target cells are now empty)
+            bool draggedFits = CanPlaceItem(draggedItem, targetPosition);
+            if (!draggedFits)
+            {
+                // Restore target
+                PlaceItemOnGrid(targetItem, savedTargetPos);
+                return false;
+            }
+
+            // Check if target item fits at dragged's old position
+            // (dragged item's cells are already cleared from SuspendItemFromGrid during drag)
+            bool targetFits = CanPlaceItemIgnoring(targetItem, draggedOldPosition, draggedItem);
+
+            // Restore target item to its original position
+            PlaceItemOnGrid(targetItem, savedTargetPos);
+
+            if (targetFits)
+            {
+                swapTarget = targetItem;
+            }
+
+            return targetFits;
+        }
+
+        /// <summary>
+        /// Get the single item occupying the cells that would be taken by placingItem at position.
+        /// Returns null if there are zero or more than one distinct items in the way.
+        /// </summary>
+        private InventoryItem GetSingleOccupyingItem(InventoryItem placingItem, Vector2Int position)
+        {
+            bool[,] shape = placingItem.GetCurrentShape();
+            InventoryItem found = null;
+
+            for (int x = 0; x < placingItem.Width; x++)
+            {
+                for (int y = 0; y < placingItem.Height; y++)
+                {
+                    if (!shape[x, y]) continue;
+
+                    int gx = position.x + x;
+                    int gy = position.y + y;
+
+                    if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight)
+                        return null; // Out of bounds
+
+                    var occupier = grid[gx, gy];
+                    if (occupier != null && occupier != placingItem)
+                    {
+                        if (found == null)
+                            found = occupier;
+                        else if (found != occupier)
+                            return null; // More than one item blocking
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// Check if an item can be placed at a position, ignoring a specific item's cells.
+        /// Used during swap checks.
+        /// </summary>
+        private bool CanPlaceItemIgnoring(InventoryItem item, Vector2Int position, InventoryItem ignoreItem)
+        {
+            bool[,] shape = item.GetCurrentShape();
+
+            for (int x = 0; x < item.Width; x++)
+            {
+                for (int y = 0; y < item.Height; y++)
+                {
+                    if (!shape[x, y]) continue;
+
+                    int gx = position.x + x;
+                    int gy = position.y + y;
+
+                    if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight)
+                        return false;
+
+                    if (grid[gx, gy] != null && grid[gx, gy] != item && grid[gx, gy] != ignoreItem)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Suspend an item from the grid: clears its cells but keeps it in the items list.
+        /// Used during drag operations where the item is temporarily "lifted" off the grid
+        /// but should not fire removal events or change weight.
+        /// Call TryAddItem or TryAddItemAuto to restore it.
+        /// </summary>
+        public void SuspendItemFromGrid(InventoryItem item)
+        {
+            ClearItemFromGrid(item);
+        }
+
+        /// <summary>
+        /// Clear an item's cells from the grid array without removing it from the items list.
+        /// </summary>
+        private void ClearItemFromGrid(InventoryItem item)
+        {
+            var positions = item.GetOccupiedPositions();
+            foreach (var pos in positions)
+            {
+                if (pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight)
+                {
+                    if (grid[pos.x, pos.y] == item)
+                        grid[pos.x, pos.y] = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Place an item's cells on the grid array and update its gridPosition.
+        /// Does NOT fire events or modify the items list.
+        /// </summary>
+        private void PlaceItemOnGrid(InventoryItem item, Vector2Int position)
+        {
+            item.gridPosition = position;
+            bool[,] shape = item.GetCurrentShape();
+
+            for (int x = 0; x < item.Width; x++)
+            {
+                for (int y = 0; y < item.Height; y++)
+                {
+                    if (shape[x, y])
+                    {
+                        grid[position.x + x, position.y + y] = item;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Get the item at a specific grid position
         /// </summary>
         public InventoryItem GetItemAt(Vector2Int position)

@@ -26,6 +26,9 @@ namespace DungeonDredge.Core
         [SerializeField] private string villageScene = "Village";
         [SerializeField] private string dungeonScene = "Dungeon";
 
+        // Track previous state so we can resume to the right one
+        private GameState previousGameplayState = GameState.Dungeon;
+
         // Events
         public System.Action<GameState> OnGameStateChanged;
         public System.Action OnPlayerDied;
@@ -103,6 +106,7 @@ namespace DungeonDredge.Core
         {
             if (currentState == GameState.Dungeon || currentState == GameState.Village)
             {
+                previousGameplayState = currentState;
                 SetGameState(GameState.Paused);
             }
         }
@@ -111,8 +115,8 @@ namespace DungeonDredge.Core
         {
             if (currentState == GameState.Paused)
             {
-                // Return to the previous gameplay state
-                SetGameState(GameState.Dungeon);
+                // Return to the previous gameplay state (Dungeon or Village)
+                SetGameState(previousGameplayState);
             }
         }
 
