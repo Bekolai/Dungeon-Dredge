@@ -187,6 +187,8 @@ namespace DungeonDredge.Inventory
             if (currentBackpack == null || inventoryGrid == null) return;
             if (HasDroppedBackpack) return; // Can only drop one
 
+            DungeonDredge.Audio.AudioManager.Instance?.PlayItemDrop();
+
             // Create dropped backpack in world
             Vector3 dropPosition = dropPoint.position + dropPoint.forward * 0.5f;
             
@@ -231,6 +233,8 @@ namespace DungeonDredge.Inventory
                 return;
             }
 
+            DungeonDredge.Audio.AudioManager.Instance?.PlayItemPickup();
+
             // Get dropped backpack data
             var droppedInventory = droppedBackpack.GetComponent<DroppedBackpack>();
             if (droppedInventory != null)
@@ -268,6 +272,9 @@ namespace DungeonDredge.Inventory
 
             inventoryOpen = true;
             
+            // Play UI Sound
+            DungeonDredge.Audio.AudioManager.Instance?.PlayMenuOpen();
+
             // Unlock cursor for UI interaction
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -284,6 +291,9 @@ namespace DungeonDredge.Inventory
             if (!inventoryOpen) return;
 
             inventoryOpen = false;
+
+            // Play UI Sound
+            DungeonDredge.Audio.AudioManager.Instance?.PlayMenuClose();
 
             // Lock cursor back for gameplay
             Cursor.lockState = CursorLockMode.Locked;
@@ -329,7 +339,11 @@ namespace DungeonDredge.Inventory
 
             InventoryItem item = new InventoryItem(itemData);
             bool added = inventoryGrid.TryAddItemAuto(item);
-            if (!added)
+            if (added)
+            {
+                DungeonDredge.Audio.AudioManager.Instance?.PlayItemPickup();
+            }
+            else
             {
                 EventBus.Publish(new InventoryFeedbackEvent
                 {
@@ -344,7 +358,12 @@ namespace DungeonDredge.Inventory
         public bool TryPickupItem(InventoryItem item)
         {
             if (inventoryGrid == null || item == null) return false;
-            return inventoryGrid.TryAddItemAuto(item);
+            bool added = inventoryGrid.TryAddItemAuto(item);
+            if (added)
+            {
+                DungeonDredge.Audio.AudioManager.Instance?.PlayItemPickup();
+            }
+            return added;
         }
 
         public void DropItem(InventoryItem item)
@@ -353,6 +372,8 @@ namespace DungeonDredge.Inventory
 
             if (inventoryGrid.RemoveItem(item))
             {
+                DungeonDredge.Audio.AudioManager.Instance?.PlayItemDrop();
+
                 // Spawn item in world
                 if (item.itemData.worldPrefab != null)
                 {

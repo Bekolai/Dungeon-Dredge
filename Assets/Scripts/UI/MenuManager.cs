@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using DungeonDredge.Core;
 using DungeonDredge.Inventory;
+using DungeonDredge.Village;
 
 namespace DungeonDredge.UI
 {
@@ -72,6 +73,11 @@ namespace DungeonDredge.UI
                 GameManager.Instance.OnPlayerDied += ShowDeathScreen;
                 GameManager.Instance.OnPlayerExtracted += ShowExtractionScreen;
             }
+
+            if (QuestManager.Instance != null)
+            {
+                QuestManager.Instance.OnQuestCompleted += (quest) => DungeonDredge.Audio.AudioManager.Instance?.PlayQuestComplete();
+            }
         }
 
         private void OnDestroy()
@@ -81,6 +87,11 @@ namespace DungeonDredge.UI
                 GameManager.Instance.OnGameStateChanged -= OnGameStateChanged;
                 GameManager.Instance.OnPlayerDied -= ShowDeathScreen;
                 GameManager.Instance.OnPlayerExtracted -= ShowExtractionScreen;
+            }
+
+            if (QuestManager.Instance != null)
+            {
+                QuestManager.Instance.OnQuestCompleted -= (quest) => DungeonDredge.Audio.AudioManager.Instance?.PlayQuestComplete();
             }
         }
 
@@ -98,33 +109,33 @@ namespace DungeonDredge.UI
         {
             // Main Menu
             if (newGameButton != null)
-                newGameButton.onClick.AddListener(OnNewGame);
+                newGameButton.onClick.AddListener(() => { PlayButtonClick(); OnNewGame(); });
             if (continueButton != null)
-                continueButton.onClick.AddListener(OnContinue);
+                continueButton.onClick.AddListener(() => { PlayButtonClick(); OnContinue(); });
             if (settingsButton != null)
-                settingsButton.onClick.AddListener(ShowSettings);
+                settingsButton.onClick.AddListener(() => { PlayButtonClick(); ShowSettings(); });
             if (quitButton != null)
-                quitButton.onClick.AddListener(OnQuit);
+                quitButton.onClick.AddListener(() => { PlayButtonClick(); OnQuit(); });
 
             // Pause Menu
             if (resumeButton != null)
-                resumeButton.onClick.AddListener(OnResume);
+                resumeButton.onClick.AddListener(() => { PlayButtonClick(); OnResume(); });
             if (pauseSettingsButton != null)
-                pauseSettingsButton.onClick.AddListener(ShowSettings);
+                pauseSettingsButton.onClick.AddListener(() => { PlayButtonClick(); ShowSettings(); });
             if (saveQuitButton != null)
-                saveQuitButton.onClick.AddListener(OnSaveAndQuit);
+                saveQuitButton.onClick.AddListener(() => { PlayButtonClick(); OnSaveAndQuit(); });
 
             // Death Screen
             if (returnToVillageButton != null)
-                returnToVillageButton.onClick.AddListener(OnReturnToVillage);
+                returnToVillageButton.onClick.AddListener(() => { PlayButtonClick(); OnReturnToVillage(); });
 
             // Extraction Screen
             if (extractionContinueButton != null)
-                extractionContinueButton.onClick.AddListener(OnReturnToVillage);
+                extractionContinueButton.onClick.AddListener(() => { PlayButtonClick(); OnReturnToVillage(); });
 
             // Settings
             if (settingsBackButton != null)
-                settingsBackButton.onClick.AddListener(HideSettings);
+                settingsBackButton.onClick.AddListener(() => { PlayButtonClick(); HideSettings(); });
 
             // Settings sliders
             if (mouseSensitivitySlider != null)
@@ -133,6 +144,11 @@ namespace DungeonDredge.UI
                 invertYToggle.onValueChanged.AddListener(OnInvertYChanged);
             if (masterVolumeSlider != null)
                 masterVolumeSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
+        }
+
+        private void PlayButtonClick()
+        {
+            DungeonDredge.Audio.AudioManager.Instance?.PlayButtonClick();
         }
 
         #region Panel Management
@@ -277,11 +293,13 @@ namespace DungeonDredge.UI
 
             if (GameManager.Instance.CurrentState == GameState.Paused)
             {
+                DungeonDredge.Audio.AudioManager.Instance?.PlayMenuClose();
                 OnResume();
             }
             else if (GameManager.Instance.CurrentState == GameState.Dungeon || 
                      GameManager.Instance.CurrentState == GameState.Village)
             {
+                DungeonDredge.Audio.AudioManager.Instance?.PlayMenuOpen();
                 GameManager.Instance.PauseGame();
                 ShowPauseMenu();
             }

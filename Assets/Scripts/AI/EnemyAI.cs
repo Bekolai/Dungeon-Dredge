@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Events;
@@ -32,6 +33,10 @@ namespace DungeonDredge.AI
         [Header("Movement")]
         [SerializeField] private float walkSpeed = 3f;
         [SerializeField] private float chaseSpeed = 6f;
+        [SerializeField] private float maxPushDistance = 1.6f;
+        [SerializeField] private float pushDuration = 0.18f;
+        [SerializeField] private float pushSampleRadius = 0.75f;
+        [SerializeField] private float pushNavMeshEdgePadding = 0.15f;
 
         [Header("Detection")]
         [SerializeField] private float sightRange = 15f;
@@ -69,6 +74,7 @@ namespace DungeonDredge.AI
         private EnemyAnimator enemyAnimator;
         private EnemyAnimatorAdvanced advancedAnimator;
         private HealthComponent healthComponent;
+        private EnemySoundPlayer soundPlayer;
 
         // Components
         private NavMeshAgent agent;
@@ -82,9 +88,11 @@ namespace DungeonDredge.AI
         private bool isStunned;
         private bool attackInProgress;
         private bool attackDamageApplied;
+        private bool isBeingPushed;
         private float nextAttackAllowedTime;
         private bool deathNotified;
         private UnityAction healthDeathHandler;
+        private Coroutine activePushRoutine;
 
         // Detection
         private float lastDetectionCheck;
@@ -151,7 +159,19 @@ namespace DungeonDredge.AI
 
         private void Update()
         {
-            if (isStunned) return;
+            // Always update state machine so stun timer can count down
+            if (isBeingPushed)
+            {
+                // During push animation, skip everything
+                return;
+            }
+
+            if (isStunned)
+            {
+                // When stunned, only update state machine (for stun timer)
+                stateMachine.Update();
+                return;
+            }
 
             if (CheckLanternRepel())
             {
@@ -263,6 +283,10 @@ namespace DungeonDredge.AI
             }
 
             Debug.Log($"[EnemyAI] {enemyName} initialized: Rank={dungeonRank}, Behavior={behaviorType}, HP={data.GetScaledHealth(dungeonRank)}, Damage={attackDamage}");
+
+            // Refresh sound player if present
+            if (soundPlayer != null)
+                soundPlayer.ResetState();
         }
         private void InitializeStateMachine()
         {
@@ -502,6 +526,14 @@ namespace DungeonDredge.AI
             return true;
         }
 
+        /// <summary>
+        /// Play attack sound via EnemySoundPlayer (called from AttackState or animation event).
+        /// </summary>
+        public void PlayAttackSound()
+        {
+            soundPlayer?.PlayAttackSound();
+        }
+
         public void MarkAttackUsed(float cooldownScale = 1f)
         {
             float randomizedCooldown = attackCooldown * Random.Range(0.9f, 1.15f);
@@ -543,16 +575,82 @@ namespace DungeonDredge.AI
 
         public void ApplyPush(Vector3 force)
         {
-            // Apply push using NavMesh warp
-            Vector3 pushTarget = transform.position + force;
-            
-            if (NavMesh.SamplePosition(pushTarget, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+            if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
-                agent.Warp(hit.position);
+                Stun(1.5f);
+                return;
+            }
+
+            Vector3 currentPosition = agent.nextPosition;
+            Vector3 horizontalForce = Vector3.ProjectOnPlane(force, Vector3.up);
+            if (horizontalForce.sqrMagnitude <= 0.0001f)
+            {
+                Stun(1.5f);
+                return;
+            }
+
+            horizontalForce = Vector3.ClampMagnitude(horizontalForce, Mathf.Max(0.1f, maxPushDistance));
+
+            Vector3 desiredTarget = currentPosition + horizontalForce;
+
+            // Clamp movement to the current NavMesh island so push cannot "jump" to distant rooms.
+            if (NavMesh.Raycast(currentPosition, desiredTarget, out NavMeshHit edgeHit, NavMesh.AllAreas))
+            {
+                Vector3 toEdge = edgeHit.position - currentPosition;
+                if (toEdge.sqrMagnitude > 0.0001f)
+                {
+                    float safeDistance = Mathf.Max(0f, toEdge.magnitude - pushNavMeshEdgePadding);
+                    desiredTarget = currentPosition + toEdge.normalized * safeDistance;
+                }
+                else
+                {
+                    desiredTarget = currentPosition;
+                }
+            }
+
+            if (NavMesh.SamplePosition(desiredTarget, out NavMeshHit sampledTarget, pushSampleRadius, NavMesh.AllAreas))
+            {
+                if (activePushRoutine != null)
+                {
+                    StopCoroutine(activePushRoutine);
+                }
+
+                activePushRoutine = StartCoroutine(PerformPush(sampledTarget.position, 1.5f));
+                return;
             }
 
             // Brief stun from push
             Stun(1.5f);
+        }
+
+        private IEnumerator PerformPush(Vector3 targetPosition, float stunDuration)
+        {
+            isBeingPushed = true;
+            float duration = Mathf.Max(0.05f, pushDuration);
+            float elapsed = 0f;
+            Vector3 startPosition = agent.nextPosition;
+
+            // Prevent path-following from fighting manual shove displacement.
+            agent.ResetPath();
+
+            while (elapsed < duration && agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float easedT = 1f - Mathf.Pow(1f - t, 3f); // Ease-out for a stronger shove feel.
+                Vector3 nextPosition = Vector3.Lerp(startPosition, targetPosition, easedT);
+                agent.Move(nextPosition - agent.nextPosition);
+                yield return null;
+            }
+
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.Warp(targetPosition);
+            }
+
+            isBeingPushed = false;
+            activePushRoutine = null;
+            Stun(stunDuration);
         }
 
         #endregion
@@ -719,6 +817,7 @@ namespace DungeonDredge.AI
             if (advancedAnimator == null) advancedAnimator = GetComponentInChildren<EnemyAnimatorAdvanced>();
 
             healthComponent = GetComponent<HealthComponent>();
+            soundPlayer = GetComponent<EnemySoundPlayer>();
             HookAnimationEvents();
             HookHealthEvents();
         }

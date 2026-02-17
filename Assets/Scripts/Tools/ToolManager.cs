@@ -147,5 +147,58 @@ namespace DungeonDredge.Tools
                 tool?.Refill();
             }
         }
+
+        /// <summary>
+        /// Auto-assign a tool to the first available empty slot.
+        /// Returns the slot index used, or -1 if no slots available.
+        /// </summary>
+        public int AutoAssignTool(ToolBase tool)
+        {
+            if (tool == null) return -1;
+
+            for (int i = 0; i < toolSlots.Length; i++)
+            {
+                if (toolSlots[i] == null)
+                {
+                    EquipTool(tool, i);
+                    Debug.Log($"[ToolManager] Auto-assigned '{tool.ToolName}' to slot {i + 1}");
+                    return i;
+                }
+            }
+
+            Debug.LogWarning($"[ToolManager] No empty slot available for '{tool.ToolName}'");
+            return -1;
+        }
+
+        /// <summary>
+        /// Auto-assign multiple tools to empty slots.
+        /// Useful when entering a dungeon with a set of tools.
+        /// </summary>
+        public void AutoAssignTools(IEnumerable<ToolBase> tools)
+        {
+            foreach (var tool in tools)
+            {
+                if (AutoAssignTool(tool) < 0) break; // No more empty slots
+            }
+        }
+
+        /// <summary>
+        /// Check if any slot has a tool with the given name (case-insensitive).
+        /// </summary>
+        public bool HasToolByName(string toolName)
+        {
+            if (string.IsNullOrEmpty(toolName)) return false;
+
+            foreach (var tool in toolSlots)
+            {
+                if (tool != null && tool.ToolName != null &&
+                    tool.ToolName.IndexOf(toolName, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

@@ -220,8 +220,9 @@ namespace DungeonDredge.UI
         {
             if (stealthEyeImage == null || eyeSprites == null || eyeSprites.Length == 0) return;
 
-            // Smoothly interpolate eye level
-            float targetLevel = StealthManager.Instance?.NoiseRatio ?? 0f;
+            // Use the combined visibility score (crouching, lantern, movement, noise)
+            // instead of raw noise ratio so the eye actually reacts to player actions
+            float targetLevel = StealthManager.Instance?.PlayerVisibility ?? 0f;
             currentEyeLevel = Mathf.Lerp(currentEyeLevel, targetLevel, Time.deltaTime * eyeUpdateSpeed);
 
             // Select sprite based on level
@@ -471,8 +472,37 @@ namespace DungeonDredge.UI
             }
 
             HideInteractionPrompt();
-            HideTargetInfo();
             SetCrosshairInteract(false);
+
+            // Extended target scan: detect enemies at longer range even if not interactable
+            UpdateTargetScan(ray);
+        }
+
+        [Header("Target Scan")]
+        [SerializeField] private float targetScanRange = 15f;
+        [SerializeField] private LayerMask targetScanMask;
+
+        private void UpdateTargetScan(Ray ray)
+        {
+            if (Physics.Raycast(ray, out RaycastHit scanHit, targetScanRange, targetScanMask != 0 ? (int)targetScanMask : Physics.DefaultRaycastLayers))
+            {
+                var enemy = scanHit.collider.GetComponent<AI.EnemyAI>();
+                if (enemy == null) enemy = scanHit.collider.GetComponentInParent<AI.EnemyAI>();
+
+                if (enemy != null)
+                {
+                    float healthRatio = 1f;
+                    var health = enemy.GetComponent<HealthComponent>() ?? enemy.GetComponentInParent<HealthComponent>();
+                    if (health != null && health.MaxHealth > 0f)
+                    {
+                        healthRatio = Mathf.Clamp01(health.CurrentHealth / health.MaxHealth);
+                    }
+                    ShowTargetInfo(enemy.EnemyName, enemy.Rank.ToString(), healthRatio);
+                    return;
+                }
+            }
+
+            HideTargetInfo();
         }
 
         public void ShowInteractionPrompt(string text)

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using DungeonDredge.Core;
+using DungeonDredge.Player;
 
 namespace DungeonDredge.Core
 {
@@ -15,6 +16,15 @@ namespace DungeonDredge.Core
         [SerializeField] private float noiseToAlertRadiusMultiplier = 14f;
         [SerializeField] private float minimumAlertRadius = 2f;
 
+        [Header("Visibility Settings")]
+        [SerializeField] private float baseVisibility = 0.15f;
+        [SerializeField] private float noiseVisibilityWeight = 0.3f;
+        [SerializeField] private float lanternVisibilityBonus = 0.35f;
+        [SerializeField] private float sprintVisibilityBonus = 0.2f;
+        [SerializeField] private float movingVisibilityBonus = 0.1f;
+        [SerializeField] private float crouchVisibilityReduction = 0.15f;
+        [SerializeField] private float visibilitySmoothSpeed = 6f;
+
         [Header("Threat Detection")]
         [SerializeField] private float baseThreatRadius = 20f;
         [SerializeField] private LayerMask enemyLayer;
@@ -26,6 +36,14 @@ namespace DungeonDredge.Core
         private GameObject nearestThreat;
         private List<NoiseEvent> recentNoises = new List<NoiseEvent>();
         private float lastNoiseCheck;
+        private float currentVisibility;
+
+        // Cached player references (avoid FindGameObjectWithTag each frame)
+        private Transform cachedPlayerTransform;
+        private PlayerMovement cachedPlayerMovement;
+        private LanternController cachedLanternController;
+        private float playerCacheTime;
+        private const float PlayerCacheInterval = 1f;
 
         // Tracked enemies
         private List<GameObject> activeEnemies = new List<GameObject>();
@@ -35,9 +53,11 @@ namespace DungeonDredge.Core
         public float NearestThreatDistance => nearestThreatDistance;
         public GameObject NearestThreat => nearestThreat;
         public float NoiseRatio => currentNoiseLevel / maxNoiseLevel;
+        public float PlayerVisibility => currentVisibility;
 
         // Events
         public System.Action<float> OnNoiseChanged;
+        public System.Action<float> OnVisibilityChanged;
         public System.Action<float, GameObject> OnThreatDetected;
 
         private void Awake()
@@ -63,7 +83,8 @@ namespace DungeonDredge.Core
         private void Update()
         {
             DecayNoise();
-            
+            UpdateVisibility();
+
             // Periodically check for threats
             if (Time.time - lastNoiseCheck >= noiseCheckInterval)
             {
@@ -173,9 +194,28 @@ namespace DungeonDredge.Core
 
         private Transform GetPlayerTransform()
         {
-            // Find player by tag
+            RefreshPlayerCache();
+            return cachedPlayerTransform;
+        }
+
+        private void RefreshPlayerCache()
+        {
+            if (cachedPlayerTransform != null && Time.time - playerCacheTime < PlayerCacheInterval)
+                return;
+
+            playerCacheTime = Time.time;
             GameObject player = GameObject.FindGameObjectWithTag("Player");
-            return player?.transform;
+            if (player == null)
+            {
+                cachedPlayerTransform = null;
+                cachedPlayerMovement = null;
+                cachedLanternController = null;
+                return;
+            }
+
+            cachedPlayerTransform = player.transform;
+            cachedPlayerMovement = player.GetComponent<PlayerMovement>();
+            cachedLanternController = player.GetComponentInChildren<LanternController>();
         }
 
         #region Enemy Registration
@@ -217,18 +257,57 @@ namespace DungeonDredge.Core
         }
 
         /// <summary>
-        /// Get the player's current visibility level (affected by light, movement, etc.)
+        /// Get the player's current visibility level (affected by crouching, light, movement, noise).
+        /// 0 = invisible, 1 = fully exposed.
         /// </summary>
         public float GetPlayerVisibility()
         {
-            // Base visibility
-            float visibility = 0.5f;
+            return currentVisibility;
+        }
 
-            // Increase with noise
-            visibility += currentNoiseLevel * 0.25f;
+        private void UpdateVisibility()
+        {
+            float targetVisibility = CalculateRawVisibility();
+            currentVisibility = Mathf.Lerp(currentVisibility, targetVisibility,
+                Time.deltaTime * visibilitySmoothSpeed);
+            OnVisibilityChanged?.Invoke(currentVisibility);
+        }
 
-            // Could add light detection here
-            
+        private float CalculateRawVisibility()
+        {
+            RefreshPlayerCache();
+
+            float visibility = baseVisibility;
+
+            // --- Noise ---
+            visibility += NoiseRatio * noiseVisibilityWeight;
+
+            // --- Lantern ---
+            if (cachedLanternController != null && cachedLanternController.IsLanternOn)
+            {
+                visibility += lanternVisibilityBonus;
+            }
+
+            if (cachedPlayerMovement != null)
+            {
+                // --- Sprinting ---
+                if (cachedPlayerMovement.IsSprinting)
+                {
+                    visibility += sprintVisibilityBonus;
+                }
+                // --- Moving (not sprinting) ---
+                else if (cachedPlayerMovement.IsMoving)
+                {
+                    visibility += movingVisibilityBonus;
+                }
+
+                // --- Crouching ---
+                if (cachedPlayerMovement.IsCrouching)
+                {
+                    visibility -= crouchVisibilityReduction;
+                }
+            }
+
             return Mathf.Clamp01(visibility);
         }
 

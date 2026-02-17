@@ -690,7 +690,25 @@ namespace DungeonDredge.AI
             
             if (stunTime >= stunDuration)
             {
-                stateMachine.SetState<IdleState>();
+                if (enemy.BehaviorType == EnemyBehaviorType.Flee)
+                {
+                    stateMachine.SetState<FleeState>();
+                }
+                else if (enemy.Target != null && enemy.CanSeePlayer())
+                {
+                    if (enemy.BehaviorType == EnemyBehaviorType.Stalker)
+                    {
+                        stateMachine.SetState<StalkState>();
+                    }
+                    else
+                    {
+                        stateMachine.SetState<ChaseState>();
+                    }
+                }
+                else
+                {
+                    stateMachine.SetState<PatrolState>();
+                }
             }
         }
 

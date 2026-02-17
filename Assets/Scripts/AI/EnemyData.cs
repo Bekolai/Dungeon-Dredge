@@ -43,12 +43,8 @@ namespace DungeonDredge.AI
         public RuntimeAnimatorController animatorOverride;
         [Tooltip("Advanced animation configuration (for creatures with many animations)")]
         public EnemyAnimationData animationData;
-
-        [Header("Audio")]
-        public AudioClip[] idleSounds;
-        public AudioClip[] alertSounds;
-        public AudioClip[] attackSounds;
-
+         [Header("Audio")]
+        public EnemySounds enemySounds;
         [Header("Drops")]
         public ItemDropChance[] itemDrops;
 

@@ -94,6 +94,8 @@ namespace DungeonDredge.Player
                 staminaSystem.OnStaminaDepleted += OnStaminaDepleted;
             }
 
+            OnLevelUp += (type, level) => DungeonDredge.Audio.AudioManager.Instance?.PlayLevelUp();
+
             // Apply initial stats
             ApplyStatBonuses();
         }

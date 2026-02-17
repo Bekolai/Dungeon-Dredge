@@ -27,25 +27,36 @@ namespace DungeonDredge.Audio
         [SerializeField] private AudioSource uiSource;
 
         [Header("Music Tracks")]
-        [SerializeField] private AudioClip menuMusic;
-        [SerializeField] private AudioClip villageMusic;
-        [SerializeField] private AudioClip dungeonCalmMusic;
-        [SerializeField] private AudioClip dungeonTenseMusic;
-        [SerializeField] private AudioClip chaseMusic;
+        [SerializeField] private AudioClip[] menuMusic;
+        [SerializeField] private AudioClip[] villageMusic;
+        [SerializeField] private AudioClip[] dungeonCalmMusic;
+        [SerializeField] private AudioClip[] dungeonTenseMusic;
+        [SerializeField] private AudioClip[] chaseMusic;
+
+        [Header("Dungeon Ambient (Drag-and-Drop)")]
+        [Tooltip("Ambient loops for calm exploration (dripping water, distant echoes, wind).")]
+        [SerializeField] private AudioClip[] dungeonAmbientCalm;
+        [Tooltip("Ambient loops for tense moments (heartbeat, whispers, creaking).")]
+        [SerializeField] private AudioClip[] dungeonAmbientTense;
+        [Tooltip("Extra ambient layer that always plays alongside the main ambient.")]
+        [SerializeField] private AudioClip[] dungeonAmbientLayer;
+        [SerializeField] private AudioSource ambientLayerSource;
+        [SerializeField, Range(0f, 1f)] private float ambientLayerVolume = 0.3f;
 
         [Header("UI Sounds")]
-        [SerializeField] private AudioClip buttonClick;
-        [SerializeField] private AudioClip menuOpen;
-        [SerializeField] private AudioClip menuClose;
-        [SerializeField] private AudioClip itemPickup;
-        [SerializeField] private AudioClip itemDrop;
-        [SerializeField] private AudioClip questComplete;
-        [SerializeField] private AudioClip levelUp;
+        [SerializeField] private AudioClip[] buttonClick;
+        [SerializeField] private AudioClip[] menuOpen;
+        [SerializeField] private AudioClip[] menuClose;
+        [SerializeField] private AudioClip[] itemPickup;
+        [SerializeField] private AudioClip[] itemDrop;
+        [SerializeField] private AudioClip[] questComplete;
+        [SerializeField] private AudioClip[] levelUp;
 
         // State
         private AudioSource currentMusicSource;
         private float currentThreatLevel = 0f;
         private bool isCrossfading = false;
+        private bool isTenseAmbient = false;
 
         // Volume
         private float masterVolume = 1f;
@@ -106,14 +117,32 @@ namespace DungeonDredge.Audio
             switch (state)
             {
                 case GameState.MainMenu:
-                    PlayMusic(menuMusic);
+                    PlayRandomMusic(menuMusic);
                     break;
                 case GameState.Village:
-                    PlayMusic(villageMusic);
+                    PlayRandomMusic(villageMusic);
                     break;
                 case GameState.Dungeon:
-                    PlayMusic(dungeonCalmMusic);
+                    PlayRandomMusic(dungeonCalmMusic);
+                    StartDungeonAmbient();
                     break;
+            }
+        }
+
+        public void PlayRandomMusic(AudioClip[] clips, bool loop = true)
+        {
+            if (clips == null || clips.Length == 0) return;
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
+            PlayMusic(clip, loop);
+        }
+
+        public void PlayRandomSound(AudioClip[] clips, AudioSource source, float volume = 1f)
+        {
+            if (clips == null || clips.Length == 0 || source == null) return;
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
+            if (clip != null)
+            {
+                source.PlayOneShot(clip, volume);
             }
         }
 
@@ -179,25 +208,40 @@ namespace DungeonDredge.Audio
             // Switch music based on threat
             if (currentThreatLevel > 0.7f)
             {
-                if (currentMusicSource.clip != chaseMusic)
+                if (!IsPlayingAny(chaseMusic))
                 {
-                    PlayMusic(chaseMusic);
+                    PlayRandomMusic(chaseMusic);
+                    SetTenseAmbient(true);
                 }
             }
             else if (currentThreatLevel > 0.3f)
             {
-                if (currentMusicSource.clip != dungeonTenseMusic)
+                if (!IsPlayingAny(dungeonTenseMusic))
                 {
-                    PlayMusic(dungeonTenseMusic);
+                    PlayRandomMusic(dungeonTenseMusic);
+                    SetTenseAmbient(true);
                 }
             }
             else
             {
-                if (currentMusicSource.clip != dungeonCalmMusic)
+                if (!IsPlayingAny(dungeonCalmMusic))
                 {
-                    PlayMusic(dungeonCalmMusic);
+                    PlayRandomMusic(dungeonCalmMusic);
+                    SetTenseAmbient(false);
                 }
             }
+        }
+
+        private bool IsPlayingAny(AudioClip[] clips)
+        {
+            if (clips == null || clips.Length == 0) return false;
+            if (currentMusicSource == null || !currentMusicSource.isPlaying) return false;
+
+            foreach (var clip in clips)
+            {
+                if (currentMusicSource.clip == clip) return true;
+            }
+            return false;
         }
 
         public void StopMusic()
@@ -219,9 +263,60 @@ namespace DungeonDredge.Audio
             ambientSource.Play();
         }
 
+        /// <summary>
+        /// Start ambient audio for a dungeon. Randomly selects clips from the appropriate arrays.
+        /// Call this when entering a dungeon.
+        /// </summary>
+        public void StartDungeonAmbient()
+        {
+            PlayRandomAmbient(dungeonAmbientCalm);
+            PlayAmbientLayer(dungeonAmbientLayer);
+        }
+
+        /// <summary>
+        /// Switch to tense ambient (when threat is detected).
+        /// </summary>
+        public void SetTenseAmbient(bool tense)
+        {
+            if (isTenseAmbient == tense) return;
+            isTenseAmbient = tense;
+
+            AudioClip[] clips = tense ? dungeonAmbientTense : dungeonAmbientCalm;
+            PlayRandomAmbient(clips);
+        }
+
+        private void PlayRandomAmbient(AudioClip[] clips)
+        {
+            if (ambientSource == null || clips == null || clips.Length == 0) return;
+
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
+            if (clip == null) return;
+
+            // Don't restart if already playing this clip
+            if (ambientSource.clip == clip && ambientSource.isPlaying) return;
+
+            ambientSource.clip = clip;
+            ambientSource.loop = true;
+            ambientSource.Play();
+        }
+
+        private void PlayAmbientLayer(AudioClip[] clips)
+        {
+            if (ambientLayerSource == null || clips == null || clips.Length == 0) return;
+
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
+            if (clip == null) return;
+
+            ambientLayerSource.clip = clip;
+            ambientLayerSource.loop = true;
+            ambientLayerSource.volume = ambientLayerVolume;
+            ambientLayerSource.Play();
+        }
+
         public void StopAmbient()
         {
             ambientSource?.Stop();
+            ambientLayerSource?.Stop();
         }
 
         #endregion
@@ -230,37 +325,37 @@ namespace DungeonDredge.Audio
 
         public void PlayButtonClick()
         {
-            PlayUISound(buttonClick);
+            PlayRandomSound(buttonClick, uiSource);
         }
 
         public void PlayMenuOpen()
         {
-            PlayUISound(menuOpen);
+            PlayRandomSound(menuOpen, uiSource);
         }
 
         public void PlayMenuClose()
         {
-            PlayUISound(menuClose);
+            PlayRandomSound(menuClose, uiSource);
         }
 
         public void PlayItemPickup()
         {
-            PlayUISound(itemPickup);
+            PlayRandomSound(itemPickup, uiSource);
         }
 
         public void PlayItemDrop()
         {
-            PlayUISound(itemDrop);
+            PlayRandomSound(itemDrop, uiSource);
         }
 
         public void PlayQuestComplete()
         {
-            PlayUISound(questComplete);
+            PlayRandomSound(questComplete, uiSource);
         }
 
         public void PlayLevelUp()
         {
-            PlayUISound(levelUp);
+            PlayRandomSound(levelUp, uiSource);
         }
 
         private void PlayUISound(AudioClip clip)
