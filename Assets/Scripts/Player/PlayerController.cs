@@ -260,7 +260,7 @@ namespace DungeonDredge.Player
 
         private void OnJumpInput(InputAction.CallbackContext context)
         {
-            if (playerMovement.IsGrounded && !playerMovement.IsCrouching) // Basic check before firing event/jump
+            if (playerMovement.IsGrounded && !playerMovement.IsCrouching && playerMovement.CurrentTier != EncumbranceTier.Snail)
             {
                 if (staminaSystem == null || !staminaSystem.TryUseJumpStamina())
                 {

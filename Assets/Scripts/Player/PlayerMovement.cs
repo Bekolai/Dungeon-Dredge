@@ -14,11 +14,7 @@ namespace DungeonDredge.Player
 
         [Header("Encumbrance Settings")]
         [SerializeField] private AnimationCurve encumbranceCurve;
-        [SerializeField] private float lightThreshold = 0.4f;      // < 40%
-        [SerializeField] private float normalThreshold = 1.0f;     // 40-100%
-        [SerializeField] private float heavyThreshold = 1.2f;      // 100-120%
-        [SerializeField] private float maxOverloadThreshold = 1.4f; // 120-140% (max)
-
+        
         [Header("Jump Settings")]
         [SerializeField] private float jumpForce = 5f;
         [SerializeField] private float gravity = -20f;
@@ -39,6 +35,8 @@ namespace DungeonDredge.Player
         [SerializeField] private FootstepSystem footstepSystem;
         [Tooltip("If true, footstep audio/noise should be triggered from animation events.")]
         [SerializeField] private bool useAnimationDrivenFootsteps = true;
+
+        private StaminaSystem staminaSystem;
 
         // State
         private CharacterController controller;
@@ -94,6 +92,9 @@ namespace DungeonDredge.Player
 
             if (footstepSystem == null)
                 footstepSystem = GetComponent<FootstepSystem>();
+            
+            if (staminaSystem == null)
+                staminaSystem = GetComponent<StaminaSystem>();
         }
 
         public void Move(Vector3 direction, bool sprint, bool crouch)
@@ -113,6 +114,12 @@ namespace DungeonDredge.Player
             float speedMultiplier = encumbranceCurve.Evaluate(currentWeightRatio);
             float targetSpeed = baseWalkSpeed * speedMultiplier;
 
+            // Block movement if exhausted in Snail tier
+            if (currentTier == EncumbranceTier.Snail && staminaSystem != null && staminaSystem.IsExhausted)
+            {
+                targetSpeed = 0f;
+            }
+
             // Apply sprint or crouch multipliers
             // Use crouch INPUT directly for speed (not isCrouching state which waits for height transition)
             IsSprinting = false;
@@ -129,7 +136,7 @@ namespace DungeonDredge.Player
             CurrentSpeed = targetSpeed;
 
             // Move
-            IsMoving = direction.magnitude > 0.1f;
+            IsMoving = direction.magnitude > 0.1f && targetSpeed > 0.01f;
             if (IsMoving)
             {
                 Vector3 move = direction.normalized * targetSpeed * Time.deltaTime;
@@ -316,28 +323,22 @@ namespace DungeonDredge.Player
         /// </summary>
         public void SetWeightRatio(float ratio)
         {
-            currentWeightRatio = Mathf.Clamp(ratio, 0f, maxOverloadThreshold);
+            currentWeightRatio = Mathf.Clamp(ratio, 0f, EncumbranceUtils.MaxOverloadThreshold);
             
-            // Determine encumbrance tier
-            EncumbranceTier newTier;
-            if (ratio < lightThreshold)
-                newTier = EncumbranceTier.Light;
-            else if (ratio < normalThreshold)
-                newTier = EncumbranceTier.Medium;
-            else if (ratio < heavyThreshold)
-                newTier = EncumbranceTier.Heavy;
-            else
-                newTier = EncumbranceTier.Snail;
+            EncumbranceTier newTier = EncumbranceUtils.GetTier(currentWeightRatio);
+            Debug.Log("New Tier: " + newTier);
 
             if (newTier != currentTier)
             {
                 currentTier = newTier;
-                EventBus.Publish(new EncumbranceChangedEvent
-                {
-                    WeightRatio = ratio,
-                    Tier = currentTier
-                });
             }
+
+            // Publish event on every change so UI updates
+            EventBus.Publish(new EncumbranceChangedEvent
+            {
+                WeightRatio = ratio,
+                Tier = currentTier
+            });
         }
 
         public float GetNoiseMultiplier()

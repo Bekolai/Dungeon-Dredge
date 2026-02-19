@@ -350,7 +350,8 @@ namespace DungeonDredge.UI
                 float current = playerInventory.Grid.CurrentWeight;
                 float max = playerInventory.Grid.MaxWeight;
                 int percent = Mathf.RoundToInt(weightRatio * 100f);
-                weightText.text = $"{current:F1}/{max:F1}kg ({percent}%)";
+                //weightText.text = $"{current:F1}/{max:F1}kg ({percent}%)";
+                weightText.text = $"{current:F1}/{max:F1}kg";
             }
         }
 

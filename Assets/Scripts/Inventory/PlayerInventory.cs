@@ -145,7 +145,17 @@ namespace DungeonDredge.Inventory
             
             if (inventoryGrid != null)
             {
+                // Ensure we are subscribed to the grid (if it's a new component or just for safety)
+                inventoryGrid.OnWeightChanged -= OnWeightChanged;
+                inventoryGrid.OnWeightChanged += OnWeightChanged;
+                
                 inventoryGrid.ResizeGrid(backpack.gridWidth, backpack.gridHeight);
+                
+                // Initialize capacity
+                if (playerStats != null)
+                {
+                    inventoryGrid.SetWeightCapacity(playerStats.WeightCapacity);
+                }
             }
         }
 
@@ -160,10 +170,9 @@ namespace DungeonDredge.Inventory
         private void OnWeightChanged(float weight)
         {
             // Update player movement with weight ratio
-            if (playerMovement != null && playerStats != null)
+            if (playerMovement != null)
             {
-                float capacity = playerStats.WeightCapacity;
-                inventoryGrid.SetWeightCapacity(capacity);
+                float capacity = GetCurrentWeightCapacity();
                 playerMovement.SetWeightRatio(weight / capacity);
             }
         }

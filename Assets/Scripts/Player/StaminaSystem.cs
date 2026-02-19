@@ -22,12 +22,18 @@ namespace DungeonDredge.Player
         [Header("Thresholds")]
         [SerializeField] private float minimumSprintStamina = 10f;
 
+        [Header("Snail Tier Feedback")]
+        [SerializeField] private AudioSource breathingAudioSource;
+        [SerializeField] private AudioClip loudBreathingClip;
+        [SerializeField] private float breathingFadeSpeed = 2f;
+
         // State
         private float currentStamina;
         private float maxStamina;
         private float timeSinceLastDrain;
         private int enduranceLevel = 1;
         private bool isRecovering = true;
+        private float targetBreathingVolume = 0f;
 
         // Reference to movement for encumbrance info
         private PlayerMovement playerMovement;
@@ -37,7 +43,8 @@ namespace DungeonDredge.Player
         public float MaxStamina => maxStamina;
         public float StaminaRatio => currentStamina / maxStamina;
         public bool CanSprint => currentStamina > minimumSprintStamina;
-        public bool CanJump => currentStamina >= jumpStaminaCost;
+        public bool CanJump => currentStamina >= jumpStaminaCost && 
+                              (playerMovement == null || playerMovement.CurrentTier != EncumbranceTier.Snail);
         public bool IsExhausted => currentStamina <= 0f;
 
         // Events
@@ -78,6 +85,31 @@ namespace DungeonDredge.Player
 
             // Publish stamina update
             PublishStaminaUpdate();
+
+            // Update Snail tier feedback
+            UpdateBreathingAudio();
+        }
+
+        private void UpdateBreathingAudio()
+        {
+            if (breathingAudioSource == null) return;
+
+            bool isSnail = playerMovement != null && playerMovement.CurrentTier == EncumbranceTier.Snail;
+            targetBreathingVolume = isSnail ? 1f : 0f;
+
+            if (targetBreathingVolume > 0 && !breathingAudioSource.isPlaying)
+            {
+                breathingAudioSource.clip = loudBreathingClip;
+                breathingAudioSource.loop = true;
+                breathingAudioSource.Play();
+            }
+
+            breathingAudioSource.volume = Mathf.MoveTowards(breathingAudioSource.volume, targetBreathingVolume, Time.deltaTime * breathingFadeSpeed);
+
+            if (breathingAudioSource.volume <= 0 && breathingAudioSource.isPlaying)
+            {
+                breathingAudioSource.Stop();
+            }
         }
 
         private bool ShouldDrainStamina()
