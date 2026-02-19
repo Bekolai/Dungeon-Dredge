@@ -18,6 +18,7 @@ namespace DungeonDredge.Player
         [Header("Jump Settings")]
         [SerializeField] private float jumpForce = 5f;
         [SerializeField] private float gravity = -20f;
+        [SerializeField] private float jumpCooldown = 0.5f; // Cooldown after landing before can jump again
 
         [Header("Crouch Settings")]
         [SerializeField] private float normalHeight = 2f;
@@ -45,11 +46,14 @@ namespace DungeonDredge.Player
         private bool isCrouching;
         private float currentHeight;
         private float swayTimer;
+        private bool hasJumped; // Track if we've jumped and are ascending
+        private float jumpCooldownTimer; // Timer for jump cooldown after landing
         
         [Header("Ground Detection")]
         [SerializeField] private float groundCheckOffset = 0.1f;
         [SerializeField] private float groundCheckRadius = 0.4f;
         [SerializeField] private LayerMask groundMask;
+        [SerializeField] private float groundCheckBuffer = 0.1f; // Buffer to prevent flickering when hovering
 
         // Encumbrance
         private float currentWeightRatio = 0f;
@@ -69,6 +73,7 @@ namespace DungeonDredge.Player
         public float CurrentSpeed { get; private set; }
         public EncumbranceTier CurrentTier => currentTier;
         public Vector3 Velocity => controller.velocity;
+        public PlayerVoiceManager PlayerVoiceManager { get; private set; }
 
         private void Awake()
         {
@@ -95,10 +100,19 @@ namespace DungeonDredge.Player
             
             if (staminaSystem == null)
                 staminaSystem = GetComponent<StaminaSystem>();
+
+            if (PlayerVoiceManager == null)
+                PlayerVoiceManager = GetComponent<PlayerVoiceManager>();
         }
 
         public void Move(Vector3 direction, bool sprint, bool crouch)
         {
+            // Update jump cooldown timer
+            if (jumpCooldownTimer > 0f)
+            {
+                jumpCooldownTimer -= Time.deltaTime;
+            }
+            
             // Ground check
             CheckGrounded();
             
@@ -155,34 +169,70 @@ namespace DungeonDredge.Player
             {
                 ApplyCameraSway();
             }
+            
         }
 
         private void CheckGrounded()
         {
+            // If we've jumped and are ascending, we're definitely not grounded
+            if (hasJumped && velocity.y > 0.1f)
+            {
+                isGrounded = false;
+                return;
+            }
+            
             // Center of the bottom sphere of the capsule
             Vector3 spherePosition = transform.position + Vector3.down * (controller.height / 2f - controller.radius + groundCheckOffset);
             
-            // If CharacterController is confident, trust it first, otherwise do our own check
-            if (controller.isGrounded)
+            // Check if we're ascending - if so, don't consider grounded even if controller says we are
+            bool isAscending = velocity.y > groundCheckBuffer;
+            
+            // If CharacterController is confident AND we're not ascending, trust it
+            if (controller.isGrounded && !isAscending)
             {
+                bool wasGroundedLocal = isGrounded;
                 isGrounded = true;
+                // Reset jump flag and cooldown when we land
+                if (!wasGroundedLocal && velocity.y <= 0)
+                {
+                    hasJumped = false;
+                    jumpCooldownTimer = jumpCooldown; // Start cooldown when landing
+                }
                 return;
             }
             
             // Fallback sphere cast for edges/slopes
-            isGrounded = Physics.CheckSphere(spherePosition, groundCheckRadius, groundMask, QueryTriggerInteraction.Ignore);
+            bool wasGrounded = isGrounded;
+            bool sphereCheck = Physics.CheckSphere(spherePosition, groundCheckRadius, groundMask, QueryTriggerInteraction.Ignore);
+            
+            // Only consider grounded if sphere check passes AND we're not ascending
+            isGrounded = sphereCheck && !isAscending;
+            
+            // Reset jump flag and cooldown when we land
+            if (!wasGrounded && isGrounded && velocity.y <= 0)
+            {
+                hasJumped = false;
+                jumpCooldownTimer = jumpCooldown; // Start cooldown when landing
+            }
         }
 
         public void TryJump()
         {
-            if (isGrounded && !isCrouching && currentTier != EncumbranceTier.Snail)
+            // Only allow jumping if grounded, not crouching, not in Snail tier, haven't already jumped, and cooldown has expired
+            if (isGrounded && !isCrouching && currentTier != EncumbranceTier.Snail && !hasJumped && jumpCooldownTimer <= 0f)
             {
+                // Mark that we've jumped
+                hasJumped = true;
+                
                 // Force Unground
                 isGrounded = false;
                 
                 // Reduce jump based on encumbrance
-                float jumpMultiplier = encumbranceCurve.Evaluate(currentWeightRatio);
-                velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity) * jumpMultiplier;
+              //  float jumpMultiplier = encumbranceCurve.Evaluate(currentWeightRatio);
+              //  velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity) * jumpMultiplier;
+                velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
+                // Play jump sound
+                PlayerVoiceManager?.PlayJumpSound();
 
                 // Generate noise
                 GenerateNoise(1.0f);

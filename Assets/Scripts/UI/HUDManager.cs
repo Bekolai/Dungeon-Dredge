@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -75,6 +76,16 @@ namespace DungeonDredge.UI
         [SerializeField] private TextMeshProUGUI targetRankText;
         [SerializeField] private Slider targetHealthSlider;
 
+        [Header("Notifications (bottom-left)")]
+        [SerializeField] private RectTransform notificationContainer;
+        [SerializeField] private GameObject notificationEntryPrefab; // Optional prefab, or we'll create dynamically
+        [SerializeField] private float notificationDefaultDuration = 2.5f;
+        [SerializeField] private float notificationFadeInTime = 0.2f;
+        [SerializeField] private float notificationFadeOutTime = 0.3f;
+        [SerializeField] private float notificationSpacing = 5f; // Vertical spacing between notifications
+        [SerializeField] private int notificationMaxCount = 5; // Max notifications visible at once
+        [SerializeField] private int notificationPoolSize = 10; // Initial pool size
+
         // State
         private float currentEyeLevel = 0f;
         private float currentNoiseLevel = 0f;
@@ -83,6 +94,21 @@ namespace DungeonDredge.UI
         private bool isStaminaVisible = false;
         private float temporaryPromptTimer = 0f;
 
+        // Notifications: list of active notification entries
+        private class NotificationEntry
+        {
+            public GameObject gameObject;
+            public TextMeshProUGUI text;
+            public CanvasGroup canvasGroup;
+            public RectTransform rectTransform;
+            public float timer;
+            public float fadeInRemaining;
+        }
+        private readonly List<NotificationEntry> activeNotifications = new();
+        
+        // Object pool for notification entries
+        private readonly Queue<GameObject> notificationPool = new();
+
         private void Start()
         {
             // Subscribe to EventBus events (these work without player ref)
@@ -90,6 +116,7 @@ namespace DungeonDredge.UI
             EventBus.Subscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Subscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
             EventBus.Subscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
+            EventBus.Subscribe<PlayerStatChangedEvent>(OnPlayerStatChanged);
 
             if (StealthManager.Instance != null)
             {
@@ -111,6 +138,7 @@ namespace DungeonDredge.UI
             UpdateToolSlots();
             HideTargetInfo();
             HideInteractionPrompt();
+            InitializeNotificationPool();
         }
 
         private void OnDestroy()
@@ -119,6 +147,7 @@ namespace DungeonDredge.UI
             EventBus.Unsubscribe<StaminaChangedEvent>(OnStaminaChanged);
             EventBus.Unsubscribe<EncumbranceChangedEvent>(OnEncumbranceChanged);
             EventBus.Unsubscribe<InventoryFeedbackEvent>(OnInventoryFeedback);
+            EventBus.Unsubscribe<PlayerStatChangedEvent>(OnPlayerStatChanged);
 
             DungeonManager.OnPlayerSpawned -= OnPlayerSpawned;
 
@@ -179,6 +208,7 @@ namespace DungeonDredge.UI
             UpdateStealthNoiseBar();
             UpdateThreatPulse();
             UpdateStaminaVisibility();
+            UpdateNotifications();
             UpdateTemporaryPromptTimer();
             if (temporaryPromptTimer <= 0f)
             {
@@ -523,8 +553,14 @@ namespace DungeonDredge.UI
             if (string.IsNullOrWhiteSpace(evt.Message))
                 return;
 
-            ShowInteractionPrompt(evt.Message);
-            temporaryPromptTimer = Mathf.Max(0.2f, evt.Duration);
+            float duration = evt.Duration > 0f ? evt.Duration : notificationDefaultDuration;
+            ShowNotification(evt.Message, duration);
+        }
+
+        private void OnPlayerStatChanged(PlayerStatChangedEvent evt)
+        {
+            string statName = evt.StatType.ToString();
+            ShowNotification($"{statName} level up {evt.NewLevel}!", notificationDefaultDuration);
         }
 
         private void UpdateTemporaryPromptTimer()
@@ -552,6 +588,253 @@ namespace DungeonDredge.UI
             if (crosshairImage != null)
             {
                 crosshairImage.color = interact ? interactCrosshairColor : normalCrosshairColor;
+            }
+        }
+
+        #endregion
+
+        #region Notifications
+
+        [ContextMenu("Debug Notifications")]
+        public void DebugNotifications()
+        {
+            ShowNotification("Looted Golden Idol!", 2f);
+            ShowNotification("Endurance level up 2!", 2.5f);
+            ShowNotification("No room in backpack", 1.5f);
+        }
+
+        /// <summary>
+        /// Initialize the notification pool with pre-created entries.
+        /// </summary>
+        private void InitializeNotificationPool()
+        {
+            if (notificationContainer == null) return;
+
+            for (int i = 0; i < notificationPoolSize; i++)
+            {
+                GameObject pooledObj = CreateNotificationEntry();
+                ReturnToPool(pooledObj);
+            }
+        }
+
+        /// <summary>
+        /// Get a notification entry from the pool, or create a new one if pool is empty.
+        /// </summary>
+        private GameObject GetFromPool()
+        {
+            GameObject entryObj;
+            
+            if (notificationPool.Count > 0)
+            {
+                entryObj = notificationPool.Dequeue();
+                entryObj.SetActive(true);
+            }
+            else
+            {
+                // Pool is empty, create a new one
+                entryObj = CreateNotificationEntry();
+            }
+
+            return entryObj;
+        }
+
+        /// <summary>
+        /// Return a notification entry to the pool for reuse.
+        /// </summary>
+        private void ReturnToPool(GameObject entryObj)
+        {
+            if (entryObj == null) return;
+
+            entryObj.SetActive(false);
+            entryObj.transform.SetParent(notificationContainer, false);
+            
+            // Reset components
+            CanvasGroup canvasGroup = entryObj.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+            }
+
+            TextMeshProUGUI text = entryObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null)
+            {
+                text.text = "";
+            }
+
+            notificationPool.Enqueue(entryObj);
+        }
+
+        /// <summary>
+        /// Show a temporary message in the bottom-left notification area.
+        /// New notifications appear at the bottom, pushing older ones up.
+        /// </summary>
+        public void ShowNotification(string message, float duration = -1f)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return;
+            if (notificationContainer == null) return;
+            if (duration <= 0f) duration = notificationDefaultDuration;
+
+            // Remove oldest if we're at max count
+            if (activeNotifications.Count >= notificationMaxCount)
+            {
+                NotificationEntry oldest = activeNotifications[0];
+                activeNotifications.RemoveAt(0);
+                RemoveNotification(oldest);
+            }
+
+            // Get notification entry from pool
+            GameObject entryObj = GetFromPool();
+
+            NotificationEntry entry = new NotificationEntry
+            {
+                gameObject = entryObj,
+                text = entryObj.GetComponentInChildren<TextMeshProUGUI>(),
+                canvasGroup = entryObj.GetComponent<CanvasGroup>(),
+                rectTransform = entryObj.GetComponent<RectTransform>(),
+                timer = duration,
+                fadeInRemaining = notificationFadeInTime
+            };
+
+            // Ensure CanvasGroup exists
+            if (entry.canvasGroup == null)
+            {
+                entry.canvasGroup = entryObj.AddComponent<CanvasGroup>();
+            }
+
+            // Set text
+            if (entry.text != null)
+            {
+                entry.text.text = message;
+            }
+
+            // Initialize position and alpha
+            if (entry.rectTransform != null)
+            {
+                entry.rectTransform.anchoredPosition = Vector2.zero;
+                entry.rectTransform.anchorMin = new Vector2(0f, 0f);
+                entry.rectTransform.anchorMax = new Vector2(1f, 0f);
+                entry.rectTransform.pivot = new Vector2(0f, 0f);
+            }
+            entry.canvasGroup.alpha = 0f;
+
+            // Add to list (newest at end, oldest at start)
+            activeNotifications.Add(entry);
+
+            // Update positions
+            UpdateNotificationPositions();
+        }
+
+        private GameObject CreateNotificationEntry()
+        {
+            GameObject entryObj;
+            
+            if (notificationEntryPrefab != null)
+            {
+                entryObj = Instantiate(notificationEntryPrefab, notificationContainer);
+            }
+            else
+            {
+                // Create a simple notification entry GameObject if no prefab is provided
+                entryObj = new GameObject("NotificationEntry");
+                entryObj.transform.SetParent(notificationContainer, false);
+
+                RectTransform rect = entryObj.AddComponent<RectTransform>();
+                rect.anchorMin = new Vector2(0f, 0f);
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(0f, 0f);
+                rect.sizeDelta = new Vector2(0f, 30f); // Height will be auto-sized by text
+
+                CanvasGroup canvasGroup = entryObj.AddComponent<CanvasGroup>();
+
+                GameObject textObj = new GameObject("Text");
+                textObj.transform.SetParent(entryObj.transform, false);
+                TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+                text.text = "";
+                text.fontSize = 14f;
+                text.color = Color.white;
+                text.alignment = TextAlignmentOptions.Left;
+                text.overflowMode = TextOverflowModes.Truncate;
+
+                RectTransform textRect = textObj.GetComponent<RectTransform>();
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.sizeDelta = Vector2.zero;
+                textRect.offsetMin = new Vector2(5f, 0f);
+                textRect.offsetMax = new Vector2(-5f, 0f);
+            }
+
+            return entryObj;
+        }
+
+        private void UpdateNotifications()
+        {
+            if (notificationContainer == null) return;
+
+            // Update all active notifications
+            for (int i = activeNotifications.Count - 1; i >= 0; i--)
+            {
+                NotificationEntry entry = activeNotifications[i];
+                if (entry == null || entry.gameObject == null)
+                {
+                    activeNotifications.RemoveAt(i);
+                    continue;
+                }
+
+                entry.timer -= Time.deltaTime;
+
+                // Fade in at start
+                if (entry.fadeInRemaining > 0f)
+                {
+                    entry.fadeInRemaining -= Time.deltaTime;
+                    float t = 1f - Mathf.Clamp01(entry.fadeInRemaining / notificationFadeInTime);
+                    entry.canvasGroup.alpha = t;
+                }
+                // Fade out near end
+                else if (entry.timer <= notificationFadeOutTime)
+                {
+                    entry.canvasGroup.alpha = Mathf.Clamp01(entry.timer / notificationFadeOutTime);
+                }
+                else
+                {
+                    entry.canvasGroup.alpha = 1f;
+                }
+
+                // Remove expired notifications
+                if (entry.timer <= 0f)
+                {
+                    RemoveNotification(entry);
+                    activeNotifications.RemoveAt(i);
+                }
+            }
+
+            // Update positions after removals
+            UpdateNotificationPositions();
+        }
+
+        private void UpdateNotificationPositions()
+        {
+            float yOffset = 0f;
+            for (int i = 0; i < activeNotifications.Count; i++)
+            {
+                NotificationEntry entry = activeNotifications[i];
+                if (entry?.rectTransform == null) continue;
+
+                // Position from bottom up (newest at bottom, oldest at top)
+                entry.rectTransform.anchoredPosition = new Vector2(0f, yOffset);
+                
+                // Calculate height (text height + spacing)
+                float height = entry.text != null ? entry.text.preferredHeight : 30f;
+                entry.rectTransform.sizeDelta = new Vector2(0f, height);
+                
+                yOffset += height + notificationSpacing;
+            }
+        }
+
+        private void RemoveNotification(NotificationEntry entry)
+        {
+            if (entry?.gameObject != null)
+            {
+                ReturnToPool(entry.gameObject);
             }
         }
 

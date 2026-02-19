@@ -4703,6 +4703,7 @@ RectTransform:
   - {fileID: 3599739081082687908}
   - {fileID: 7193203745948433815}
   - {fileID: 8242411503238130616}
+  - {fileID: 4495607176348516649}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4859,10 +4860,65 @@ MonoBehaviour:
   targetNameText: {fileID: 1117361507506044267}
   targetRankText: {fileID: 2387351643833235577}
   targetHealthSlider: {fileID: 6777642980598678501}
+  notificationContainer: {fileID: 4495607176348516649}
+  notificationEntryPrefab: {fileID: 273025449295106848, guid: 9f8b59b11e048504888b8bb32c506a7d, type: 3}
+  notificationDefaultDuration: 2.5
+  notificationFadeInTime: 0.2
+  notificationFadeOutTime: 0.3
+  notificationSpacing: 5
+  notificationMaxCount: 5
   targetScanRange: 15
   targetScanMask:
     serializedVersion: 2
     m_Bits: 0
+--- !u!1 &7507445854276164759
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4495607176348516649}
+  - component: {fileID: 3029898540180420230}
+  m_Layer: 0
+  m_Name: NotificationBar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &4495607176348516649
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7507445854276164759}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7326734144786578595}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 49, y: -490}
+  m_SizeDelta: {x: 98, y: -980}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!225 &3029898540180420230
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7507445854276164759}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 0
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &7527612556856318015
 GameObject:
   m_ObjectHideFlags: 0

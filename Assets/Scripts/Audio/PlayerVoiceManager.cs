@@ -24,20 +24,27 @@ namespace DungeonDredge.Audio
         // Components
         private PlayerMovement playerMovement;
         private StaminaSystem staminaSystem;
-        private AudioSource voiceSource;
+        private AudioSource voiceSource; // For one-shot sounds (effort, damage, etc.)
+        private AudioSource breathingSource; // Dedicated source for breathing
 
         // State
-        private bool isBreathingLoopPlaying;
+        private bool isBreathingActive;
         private bool wasMovingLastFrame;
         private float currentBreathVolume;
         private AudioClip currentBreathClip;
+        private float lastBreathTime;
+        private float breathCooldown = 2f; // Minimum time between breaths
+        private float lastEffortSoundTime;
+        private float effortSoundCooldown = 1.5f; // Minimum time between effort sounds
+        private EncumbranceTier currentBreathingTier; // Track which tier we're breathing for
+        private bool isExhaustedBreathing; // Track if we're in exhausted state
 
         private void Awake()
         {
             playerMovement = GetComponent<PlayerMovement>();
             staminaSystem = GetComponent<StaminaSystem>();
 
-            // Create voice source
+            // Create voice source for one-shot sounds
             voiceSource = gameObject.AddComponent<AudioSource>();
             voiceSource.playOnAwake = false;
             voiceSource.loop = false;
@@ -46,6 +53,16 @@ namespace DungeonDredge.Audio
             voiceSource.maxDistance = maxDistance;
             voiceSource.rolloffMode = AudioRolloffMode.Linear;
             voiceSource.outputAudioMixerGroup = null;
+
+            // Create dedicated breathing source
+            breathingSource = gameObject.AddComponent<AudioSource>();
+            breathingSource.playOnAwake = false;
+            breathingSource.loop = false;
+            breathingSource.spatialBlend = spatialBlend;
+            breathingSource.minDistance = minDistance;
+            breathingSource.maxDistance = maxDistance;
+            breathingSource.rolloffMode = AudioRolloffMode.Linear;
+            breathingSource.outputAudioMixerGroup = null;
         }
 
         private void Start()
@@ -84,76 +101,97 @@ namespace DungeonDredge.Audio
         /// </summary>
         private void HandleBreathing()
         {
-            if (playerVoices == null || voiceSource == null)
+            if (playerVoices == null || breathingSource == null)
                 return;
+
+            // Determine current breathing state
+            bool shouldBeExhausted = staminaSystem != null && staminaSystem.IsExhausted;
+            EncumbranceTier currentTier = playerMovement.CurrentTier;
+            bool shouldBeHeavy = currentTier == EncumbranceTier.Snail ||
+                                 (currentTier == EncumbranceTier.Heavy && staminaSystem != null &&
+                                  staminaSystem.StaminaRatio < 0.7f);
+
+            // Check if breathing state has changed
+            bool stateChanged = (shouldBeExhausted != isExhaustedBreathing) ||
+                               (shouldBeHeavy && currentBreathingTier != currentTier) ||
+                               (!shouldBeExhausted && !shouldBeHeavy && isBreathingActive);
 
             // Determine target breathing clip and volume
             AudioClip targetClip = null;
             float targetVolume = 0f;
+            AudioClip[] clipArray = null;
 
-            // Check exhaustion first
-            if (staminaSystem != null && staminaSystem.IsExhausted)
+            // Check exhaustion first (highest priority)
+            if (shouldBeExhausted)
             {
-                if (playerVoices.exhaustedBreathing != null && playerVoices.exhaustedBreathing.Length > 0)
-                {
-                    targetClip = playerVoices.exhaustedBreathing[Random.Range(0, playerVoices.exhaustedBreathing.Length)];
-                    targetVolume = playerVoices.voiceVolume;
-                }
+                clipArray = playerVoices.exhaustedBreathing;
+                targetVolume = playerVoices.voiceVolume;
             }
             // Check encumbrance
-            else if (playerMovement.CurrentTier == EncumbranceTier.Snail ||
-                     (playerMovement.CurrentTier == EncumbranceTier.Heavy && staminaSystem != null &&
-                      staminaSystem.StaminaRatio < 0.7f))
+            else if (shouldBeHeavy)
             {
-                if (playerVoices.heavyBreathing != null && playerVoices.heavyBreathing.Length > 0)
-                {
-                    targetClip = playerVoices.heavyBreathing[Random.Range(0, playerVoices.heavyBreathing.Length)];
-                    targetVolume = playerVoices.voiceVolume * 0.7f;
-                }
+                clipArray = playerVoices.heavyBreathing;
+                targetVolume = playerVoices.voiceVolume * 0.7f;
             }
             else
             {
                 // Normal breathing
-                if (playerVoices.idleBreathing != null && playerVoices.idleBreathing.Length > 0)
+                clipArray = playerVoices.idleBreathing;
+                targetVolume = playerVoices.voiceVolume * 0.5f;
+            }
+
+            // Get a clip if available
+            if (clipArray != null && clipArray.Length > 0)
+            {
+                // Only change clip if state changed, otherwise keep current
+                if (stateChanged || currentBreathClip == null)
                 {
-                    targetClip = playerVoices.idleBreathing[Random.Range(0, playerVoices.idleBreathing.Length)];
-                    targetVolume = playerVoices.voiceVolume * 0.5f;
+                    targetClip = clipArray[Random.Range(0, clipArray.Length)];
+                }
+                else
+                {
+                    targetClip = currentBreathClip; // Keep same clip
                 }
             }
 
-            // Handle loop playing
+            // Handle breathing playback
             if (targetClip != null)
             {
-                if (!isBreathingLoopPlaying || targetClip != currentBreathClip)
+                // Check if enough time has passed since last breath
+                bool canPlayBreath = Time.time - lastBreathTime >= breathCooldown;
+
+                // Play if state changed or if cooldown expired
+                if (stateChanged || (canPlayBreath && !breathingSource.isPlaying))
                 {
-                    // Stop current if different
-                    if (isBreathingLoopPlaying && voiceSource.isPlaying)
+                    // Stop current breathing if state changed
+                    if (stateChanged && breathingSource.isPlaying)
                     {
-                        voiceSource.Stop();
+                        breathingSource.Stop();
                     }
 
-                    voiceSource.pitch = Random.Range(playerVoices.pitchRange.x, playerVoices.pitchRange.y);
-                    voiceSource.PlayOneShot(targetClip, targetVolume);
-                    isBreathingLoopPlaying = true;
+                    // Play new breath sound
+                    breathingSource.pitch = Random.Range(playerVoices.pitchRange.x, playerVoices.pitchRange.y);
+                    breathingSource.PlayOneShot(targetClip, targetVolume);
+                    
+                    isBreathingActive = true;
                     currentBreathClip = targetClip;
+                    currentBreathVolume = targetVolume;
+                    lastBreathTime = Time.time;
+                    isExhaustedBreathing = shouldBeExhausted;
+                    currentBreathingTier = currentTier;
 
-                    // Schedule next breath
-                    float breathInterval = Random.Range(2f, 4f);
-                    Invoke(nameof(TriggerNextBreath), breathInterval);
+                    // Schedule next breath with random interval
+                    breathCooldown = Random.Range(2f, 4f);
                 }
             }
             else
             {
-                isBreathingLoopPlaying = false;
-            }
-        }
-
-        private void TriggerNextBreath()
-        {
-            if (playerVoices != null && voiceSource != null)
-            {
-                // Trigger a new breath sound
-                HandleBreathing();
+                // No breathing needed
+                if (breathingSource.isPlaying)
+                {
+                    breathingSource.Stop();
+                }
+                isBreathingActive = false;
             }
         }
 
@@ -165,23 +203,32 @@ namespace DungeonDredge.Audio
             if (playerVoices == null || playerVoices.moveEffort == null || playerVoices.moveEffort.Length == 0)
                 return;
 
+            // Don't play effort sounds if breathing is currently playing (prevents overlap)
+            if (breathingSource != null && breathingSource.isPlaying)
+                return;
+
             bool isMoving = playerMovement.IsMoving;
             bool isHeavy = playerMovement.CurrentTier == EncumbranceTier.Heavy ||
                            playerMovement.CurrentTier == EncumbranceTier.Snail;
 
+            // Check cooldown before playing any effort sounds
+            bool canPlayEffort = Time.time - lastEffortSoundTime >= effortSoundCooldown;
+
             // Play effort when starting to move while heavy
-            if (isMoving && isHeavy && !wasMovingLastFrame)
+            if (isMoving && isHeavy && !wasMovingLastFrame && canPlayEffort)
             {
                 PlayRandomClip(playerVoices.moveEffort, playerVoices.voiceVolume * 0.6f);
+                lastEffortSoundTime = Time.time;
             }
 
-            // Play effort on movement while snail-tier
-            if (playerMovement.CurrentTier == EncumbranceTier.Snail && isMoving)
+            // Play effort on movement while snail-tier (with cooldown)
+            if (playerMovement.CurrentTier == EncumbranceTier.Snail && isMoving && canPlayEffort)
             {
-                // Random chance to play effort sound
-                if (Random.value < 0.05f) // 5% chance per frame
+                // Random chance to play effort sound (reduced from 5% per frame to occasional)
+                if (Random.value < 0.02f) // 2% chance per frame, but only if cooldown allows
                 {
                     PlayRandomClip(playerVoices.moveEffort, playerVoices.voiceVolume * 0.5f);
+                    lastEffortSoundTime = Time.time;
                 }
             }
 
@@ -242,13 +289,18 @@ namespace DungeonDredge.Audio
 
         private void OnStaminaDepleted()
         {
-            // Play gasp/exhausted sound
+            // Play gasp/exhausted sound (one-shot, separate from breathing loop)
             if (playerVoices != null && playerVoices.exhaustedBreathing != null &&
                 playerVoices.exhaustedBreathing.Length > 0)
             {
-                AudioClip gasp = playerVoices.exhaustedBreathing[Random.Range(0, playerVoices.exhaustedBreathing.Length)];
-                voiceSource.pitch = Random.Range(0.8f, 1.2f);
-                voiceSource.PlayOneShot(gasp, playerVoices.voiceVolume);
+                // Use breathing source for this gasp since it's breathing-related
+                // But only if breathing source isn't already playing
+                if (breathingSource != null && !breathingSource.isPlaying)
+                {
+                    AudioClip gasp = playerVoices.exhaustedBreathing[Random.Range(0, playerVoices.exhaustedBreathing.Length)];
+                    breathingSource.pitch = Random.Range(0.8f, 1.2f);
+                    breathingSource.PlayOneShot(gasp, playerVoices.voiceVolume);
+                }
             }
         }
 

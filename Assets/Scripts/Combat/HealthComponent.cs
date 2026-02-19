@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using DungeonDredge.Core;
 using System;
+using DungeonDredge.Audio;
 
 namespace DungeonDredge.Core
 {
@@ -22,11 +23,17 @@ namespace DungeonDredge.Core
         public bool IsDead { get; private set; }
 
         public bool IsPlayer => gameObject.CompareTag("Player");
+        public PlayerVoiceManager PlayerVoiceManager { get; private set; }
 
         private void Awake()
         {
+
+
             CurrentHealth = _maxHealth;
             OnHealthChanged?.Invoke(CurrentHealth, _maxHealth);
+            if (PlayerVoiceManager == null && IsPlayer)
+                PlayerVoiceManager = GetComponent<PlayerVoiceManager>();
+
             PublishHealthEvent();
         }
 
@@ -55,6 +62,12 @@ namespace DungeonDredge.Core
             // Invoke damage event (useful for UI or flashing effects)
             OnTakeDamage?.Invoke(amount);
             OnHealthChanged?.Invoke(CurrentHealth, _maxHealth);
+
+            if (IsPlayer)
+            {
+                PlayerVoiceManager?.PlayDamageSound(amount);
+            }
+
             PublishHealthEvent();
 
             if (CurrentHealth <= 0f)

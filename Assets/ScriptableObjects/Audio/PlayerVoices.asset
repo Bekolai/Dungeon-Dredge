@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 298808cbf5242d246a181fb6b6ce1f85, type: 3}
+  m_Name: PlayerVoices
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Audio.PlayerVoices
+  idleBreathing: []
+  heavyBreathing:
+  - {fileID: 8300000, guid: e1831f925589dcd4485d0d80d84e3fae, type: 3}
+  - {fileID: 8300000, guid: c7aca305445b74140be9cbbb3b5f46b0, type: 3}
+  exhaustedBreathing:
+  - {fileID: 8300000, guid: 6f43b578c1afb804699378e35ad3d891, type: 3}
+  - {fileID: 8300000, guid: a9850c2f5d5db044ea0df39377cb4398, type: 3}
+  - {fileID: 8300000, guid: 7b11381004d5c7f4a9f41ae7a53e9521, type: 3}
+  moveEffort: []
+  startMovement: []
+  lightDamage:
+  - {fileID: 8300000, guid: 2d173c8646a322447b66b059a587f365, type: 3}
+  - {fileID: 8300000, guid: 1f7b08cb617fb864fafcd46f45ebec2e, type: 3}
+  - {fileID: 8300000, guid: da924282e12979c49a51c2e208950d74, type: 3}
+  heavyDamage:
+  - {fileID: 8300000, guid: c6b188743a91fa148ac2fbd275fdc7cd, type: 3}
+  - {fileID: 8300000, guid: ddc650b445586454e9e4f5e74d58d0ed, type: 3}
+  jump: []
+  shove:
+  - {fileID: 8300000, guid: 868215e0a71db4c40b830fd39659993e, type: 3}
+  - {fileID: 8300000, guid: 31f517d5d2367a04ba2d5623b05b8492, type: 3}
+  voiceVolume: 0.8
+  pitchRange: {x: 0.9, y: 1.1}

@@ -319,6 +319,9 @@ namespace DungeonDredge.Player
                 armAnimator.SetTrigger("Shove");
             }
 
+            // Play shove sound
+            playerMovement.PlayerVoiceManager?.PlayShoveSound();
+
             // Find enemies in front
             Collider[] hits = Physics.OverlapSphere(transform.position, shoveRange, enemyLayer);
             bool hitSomething = false;

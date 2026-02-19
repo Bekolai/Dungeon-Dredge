@@ -2095,7 +2095,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1955335280589624673}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 72ece51f2901e7445ab60da3685d6b5f, type: 3}
   m_Name: 
@@ -4387,6 +4387,8 @@ GameObject:
   - component: {fileID: 2014482299941908526}
   - component: {fileID: 1157809537549345465}
   - component: {fileID: 3154239010139752637}
+  - component: {fileID: 7712011837803253189}
+  - component: {fileID: 1330907134638892951}
   m_Layer: 8
   m_Name: Player
   m_TagString: Player
@@ -4458,6 +4460,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   jumpForce: 1
   gravity: -22
+  jumpCooldown: 0.5
   normalHeight: 2
   crouchHeight: 1
   crouchTransitionSpeed: 10
@@ -4468,11 +4471,12 @@ MonoBehaviour:
   footstepAudioSource: {fileID: 0}
   footstepSystem: {fileID: 2014482299941908526}
   useAnimationDrivenFootsteps: 1
-  groundCheckOffset: 0.1
-  groundCheckRadius: 0.4
+  groundCheckOffset: -0.4
+  groundCheckRadius: 0.1
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 767
+  groundCheckBuffer: 0.1
 --- !u!114 &7889988113136886690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4710,6 +4714,46 @@ MonoBehaviour:
   dropBackpackAction: {fileID: -8729857713675443208, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   openInventoryAction: {fileID: -3691143913909626940, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   inventoryFallbackKey: 3
+--- !u!114 &7712011837803253189
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4971857915959286978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b393a693460759641a547e80b5a1f60d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Audio.PlayerVoiceManager
+  playerVoices: {fileID: 11400000, guid: 9d3325bfde10ce344920f536e2b5cf82, type: 2}
+  spatialBlend: 1
+  minDistance: 2
+  maxDistance: 25
+  breathFadeSpeed: 3
+--- !u!114 &1330907134638892951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4971857915959286978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd763699264b384aa2c26489dee931b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Core.HealthComponent
+  _maxHealth: 100
+  _destroyOnDeath: 0
+  OnDeath:
+    m_PersistentCalls:
+      m_Calls: []
+  OnTakeDamage:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHealthChanged:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &5002916049414601133
 GameObject:
   m_ObjectHideFlags: 0
@@ -7011,7 +7055,7 @@ Transform:
   m_GameObject: {fileID: 7457647217656484498}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.04, z: -0.08}
+  m_LocalPosition: {x: -0, y: 0.034, z: -0.015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
