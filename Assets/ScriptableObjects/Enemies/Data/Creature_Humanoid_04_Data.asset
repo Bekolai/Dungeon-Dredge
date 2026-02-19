@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a183f52b34444364ba4913c052fb3a5e, type: 3}
+  m_Name: Creature_Humanoid_04_Data
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.AI.EnemyData
+  enemyId: creature_humanoid_04
+  enemyName: Creature Humanoid 04
+  description: 
+  minimumRank: 3
+  behaviorType: 2
+  health: 175
+  walkSpeed: 3.1
+  chaseSpeed: 5.9
+  sightRange: 15
+  sightAngle: 120
+  hearingThreshold: 0.5
+  attackRange: 2
+  attackCooldown: 1.5
+  attackDamage: 17.5
+  prefab: {fileID: 6295520505762099205, guid: da58af59ab9e7fe428194614297a1d16, type: 3}
+  icon: {fileID: 0}
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  modelScale: 1
+  animatorOverride: {fileID: 0}
+  animationData: {fileID: 11400000, guid: 8573bfbdf393ef74ca8a0ac300a1b73f, type: 2}
+  enemySounds: {fileID: 11400000, guid: 23a9d11caf441f2429ff23da8592e2f6, type: 2}
+  itemDrops: []
+  healthScaling:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.33333334
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 6
+      value: 3
+      inSlope: 0.33333334
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  damageScaling:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.25
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 6
+      value: 2.5
+      inSlope: 0.25
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

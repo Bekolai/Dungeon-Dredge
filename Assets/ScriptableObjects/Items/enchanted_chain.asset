@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: enchanted_chain
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: enchanted_chain
+  itemName: Enchanted Chain
+  description: A rare material from dungeon rank D.
+  icon: {fileID: 21300000, guid: 3faebf8670b357f4ba3f5bcccb8eced9, type: 3}
+  width: 3
+  height: 1
+  customShape: 
+  canRotate: 1
+  weight: 2
+  goldValue: 160
+  rarity: 2
+  category: 1
+  minimumRank: 2
+  spawnWeight: 0.4
+  worldPrefab: {fileID: 3138375394173628234, guid: f32adebe062a1484cb67cbffacbf06ea, type: 3}
+  rarityColor: {r: 0.3, g: 0.5, b: 1, a: 1}

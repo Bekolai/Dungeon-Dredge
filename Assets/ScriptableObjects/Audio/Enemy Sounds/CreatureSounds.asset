@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9769cef311c527f46a1c5bd17497d8eb, type: 3}
+  m_Name: CreatureSounds
+  m_EditorClassIdentifier: Assembly-CSharp::EnemySounds
+  idleSounds:
+  - {fileID: 8300000, guid: 2958b9b3f5de35d4ab1ffa85e10f528f, type: 3}
+  - {fileID: 8300000, guid: b8bbbd9326466cf41865d2a97879c7b8, type: 3}
+  alertSounds:
+  - {fileID: 8300000, guid: 626a6de1ee311be41a43f23762e988f8, type: 3}
+  - {fileID: 8300000, guid: 57147e7b936c9c24f9bf15a0ad04172d, type: 3}
+  chaseSounds:
+  - {fileID: 8300000, guid: 72c8d23b92035df4b943d228efd3d7d5, type: 3}
+  - {fileID: 8300000, guid: e7ddd743b4f7e3246aa1a523eb214120, type: 3}
+  attackSounds:
+  - {fileID: 8300000, guid: a72f0c0e72c83ba46a16abfb6da96ac7, type: 3}
+  - {fileID: 8300000, guid: 237ba295a28413f419c2375c0e1155ac, type: 3}
+  - {fileID: 8300000, guid: c84b08cb9a5b55c489fe6f3660e85c6e, type: 3}
+  deathSounds:
+  - {fileID: 8300000, guid: 3fdc65d51c0a28e45afe667441b02154, type: 3}
+  - {fileID: 8300000, guid: 53811b489787ade4da09ac2d0e07cdcf, type: 3}
+  soundVolume: 0.8
+  idleSoundInterval: {x: 5, y: 15}

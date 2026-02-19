@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85ad3d1712c53d4c852e47f595150ba, type: 3}
+  m_Name: RoomTheme_DarkDungeon
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Dungeon.RoomTheme
+  themeName: Dark Dungeon
+  defaultSurface: 0
+  ambientColor: {r: 0.2, g: 0.18, b: 0.22, a: 1}
+  ambientIntensity: 0.3
+  torchColor: {r: 0.8, g: 0.5, b: 0.3, a: 1}
+  lightSources: []
+  minLightSources: 2
+  maxLightSources: 4
+  largeProps: []
+  minLargeProps: 1
+  maxLargeProps: 3
+  smallProps: []
+  minSmallProps: 3
+  maxSmallProps: 8
+  wallDecorations: []
+  minWallDecorations: 1
+  maxWallDecorations: 4
+  cornerProps: []
+  minCornerProps: 0
+  maxCornerProps: 2
+  floorClutter: []
+  minFloorClutter: 2
+  maxFloorClutter: 6
+  specialProps: []
+  specialPropChance: 0.15

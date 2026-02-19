@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: heros_axe
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: heros_axe
+  itemName: Hero's Axe
+  description: A rare valuable from dungeon rank D.
+  icon: {fileID: 21300000, guid: c23e02dfd734a334e88c4d4972df0b95, type: 3}
+  width: 3
+  height: 1
+  customShape: 
+  canRotate: 1
+  weight: 4
+  goldValue: 180
+  rarity: 2
+  category: 2
+  minimumRank: 2
+  spawnWeight: 0.3
+  worldPrefab: {fileID: 6996662064059733040, guid: 41e41dbdb6f3e8b4abb96e6aca14c386, type: 3}
+  rarityColor: {r: 0.3, g: 0.5, b: 1, a: 1}

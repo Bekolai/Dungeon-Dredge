@@ -1,0 +1,348 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &4148181873761173154
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_Name
+      value: Creature_08
+      objectReference: {fileID: 0}
+    - target: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3227384362012838714, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8802800244297355584, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 61c9b765bf860224383e85a9b7ee162d, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3907129886647387919}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4993498849519379731}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5073953253714361380}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1026707092872048790}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5798722951022919380}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6760598398293917814}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -5342584463106290488}
+    - targetCorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 634540476739778154}
+  m_SourcePrefab: {fileID: 100100000, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+--- !u!1 &2167187142808366882 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2846882267670598016, guid: e5f6dfe303604374a8483bc71341724e, type: 3}
+  m_PrefabInstance: {fileID: 4148181873761173154}
+  m_PrefabAsset: {fileID: 0}
+--- !u!195 &3907129886647387919
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 10
+  avoidancePriority: 50
+  m_AngularSpeed: 360
+  m_StoppingDistance: 1.8
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &4993498849519379731
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbd763699264b384aa2c26489dee931b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Combat.HealthComponent
+  _maxHealth: 100
+  _destroyOnDeath: 0
+  OnDeath:
+    m_PersistentCalls:
+      m_Calls: []
+  OnTakeDamage:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHealthChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &5073953253714361380
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2226bc59982ad24685873a0ef350701, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Enemies.EnemyAnimator
+  _animator: {fileID: 0}
+  _movementDampTime: 0.1
+  _attackTriggerCooldown: 0.1
+--- !u!114 &1026707092872048790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a359910e05150f489cab95f3d3defa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Enemies.EnemyAnimatorAdvanced
+  _animationData: {fileID: 0}
+  _debugMode: 0
+--- !u!136 &5798722951022919380
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &6760598398293917814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ba2f89d6db5d3340810da15b61077f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.AI.EnemyAI
+  enemyData: {fileID: 11400000, guid: aa61c8d17aab8bc49a359b0daf44b37e, type: 2}
+  dungeonRankOverride: 0
+  useDungeonRankOverride: 0
+  enemyName: Enemy
+  rank: 0
+  behaviorType: 0
+  walkSpeed: 3
+  chaseSpeed: 6
+  sightRange: 15
+  sightAngle: 120
+  closeProximityDetection: 2.5
+  rearAwarenessRange: 4
+  hearingRange: 16
+  hearingThreshold: 0.5
+  crouchStillSightRangeMultiplier: 0.7
+  crouchMovingSightRangeMultiplier: 0.85
+  sprintSightRangeMultiplier: 1.2
+  minimumCrouchVisibleRange: 4
+  crouchRearAwarenessMultiplier: 0.6
+  playerLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  obstructionLayer:
+    serializedVersion: 2
+    m_Bits: 1024
+  attackRange: 2
+  attackCooldown: 1.5
+  attackDamage: 10
+  patrolPoints: []
+  randomPatrolRadius: 9
+  patrolPointReachThreshold: 0.75
+  mainRenderer: {fileID: 0}
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  alertedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  aggressiveColor: {r: 1, g: 0, b: 0, a: 1}
+--- !u!114 &-5342584463106290488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f422fe2452ad5c4295ec14b6eeaac5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Audio.FootstepSystem
+  actorType: 2
+  playerMovement: {fileID: 0}
+  navMeshAgent: {fileID: 0}
+  characterController: {fileID: 0}
+  leftFoot: {fileID: 0}
+  rightFoot: {fileID: 0}
+  useMovementTimer: 0
+  allowExternalTriggers: 1
+  requireGroundContactForExternalTriggers: 1
+  externalTriggerGroundDistance: 0.3
+  defaultSoundsAsset: {fileID: 11400000, guid: 59b725e879c695143b7699f214ff0229, type: 2}
+  surfaceSoundSets:
+  - surfaceType: 0
+    soundSetAsset: {fileID: 11400000, guid: 59b725e879c695143b7699f214ff0229, type: 2}
+  - surfaceType: 2
+    soundSetAsset: {fileID: 11400000, guid: 9ca66567a61b646458a2ac9924b8f4a2, type: 2}
+  - surfaceType: 3
+    soundSetAsset: {fileID: 11400000, guid: fe04312601cee784e9ecdd4395d0e841, type: 2}
+  - surfaceType: 6
+    soundSetAsset: {fileID: 11400000, guid: b60f515dca0a08a46afcb92fe69328e0, type: 2}
+  - surfaceType: 5
+    soundSetAsset: {fileID: 11400000, guid: 3b8922bd648dabe4b917b0e2c1120c51, type: 2}
+  - surfaceType: 1
+    soundSetAsset: {fileID: 11400000, guid: ef19af3e4b8b39746a4d6b849a2e2822, type: 2}
+  baseStepInterval: 0.5
+  sprintIntervalMultiplier: 0.65
+  crouchIntervalMultiplier: 1.45
+  referenceMoveSpeed: 5
+  minSpeedToStep: 0.2
+  enemyBaseVolume: 0.55
+  lightVolumeBase: 0.3
+  mediumVolumeBase: 0.5
+  heavyVolumeBase: 0.8
+  snailVolumeBase: 1
+  crouchVolumeMultiplier: 0.4
+  crouchAdditionalVolumeMultiplier: 0.8
+  sprintVolumeMultiplier: 1.15
+  randomVolumeRange: {x: 0.9, y: 1.1}
+  randomPitchRange: {x: 0.94, y: 1.06}
+  crouchPitchMultiplier: 0.96
+  spatialBlend: 1
+  minDistance: 1
+  maxDistance: 20
+  rolloffMode: 1
+  applyDistanceVolumeFilter: 1
+  listenerOverride: {fileID: 0}
+  distanceNear: 1.5
+  distanceFar: 20
+  distanceVolumeCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  cullVolumeThreshold: 0.02
+  raycastDistance: 0.6
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  audioSourcePoolSize: 8
+  audioSourcePrefab: {fileID: 0}
+--- !u!114 &634540476739778154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2167187142808366882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2714f19eb4619dd48a811c70c68fcf1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.AI.EnemySoundPlayer
+  minDistance: 2
+  maxDistance: 15
+  spatialBlend: 1
+  minPitch: 0.85
+  maxPitch: 1.15

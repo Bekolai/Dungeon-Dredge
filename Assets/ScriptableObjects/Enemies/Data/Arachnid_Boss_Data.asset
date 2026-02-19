@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a183f52b34444364ba4913c052fb3a5e, type: 3}
+  m_Name: Arachnid_Boss_Data
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.AI.EnemyData
+  enemyId: arachnid_boss
+  enemyName: Arachnid Boss
+  description: 
+  minimumRank: 6
+  behaviorType: 2
+  health: 500
+  walkSpeed: 3
+  chaseSpeed: 7
+  sightRange: 25
+  sightAngle: 120
+  hearingThreshold: 0.5
+  attackRange: 2
+  attackCooldown: 1.5
+  attackDamage: 30
+  prefab: {fileID: 2240587017965871234, guid: 39dea689b928be4409c58855865d6343, type: 3}
+  icon: {fileID: 0}
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  modelScale: 1
+  animatorOverride: {fileID: 0}
+  animationData: {fileID: 11400000, guid: 1f3bc5a59584a454599a6fd995544230, type: 2}
+  enemySounds: {fileID: 11400000, guid: 39b49dd3e61cab143b5d7d95c7a5da95, type: 2}
+  itemDrops: []
+  healthScaling:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.33333334
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 6
+      value: 3
+      inSlope: 0.33333334
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  damageScaling:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.25
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 6
+      value: 2.5
+      inSlope: 0.25
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

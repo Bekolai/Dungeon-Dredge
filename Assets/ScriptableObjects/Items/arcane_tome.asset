@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: arcane_tome
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: arcane_tome
+  itemName: Arcane Tome
+  description: A rare valuable from dungeon rank D.
+  icon: {fileID: 21300000, guid: babd593c36c40024f9382c5a08092684, type: 3}
+  width: 2
+  height: 3
+  customShape: 
+  canRotate: 1
+  weight: 3
+  goldValue: 250
+  rarity: 2
+  category: 2
+  minimumRank: 2
+  spawnWeight: 0.4
+  worldPrefab: {fileID: 1732990514265983230, guid: aba738f010cc43649913e1af38420bcf, type: 3}
+  rarityColor: {r: 0.3, g: 0.5, b: 1, a: 1}

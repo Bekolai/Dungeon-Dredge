@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 748798acf8e740343a278202378f14c2, type: 3}
+  m_Name: FootstepSoundSet_Gravel
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Audio.FootstepSoundSetAsset
+  surfaceName: Gravel
+  surfaceType: 6
+  footstepClips:
+  - {fileID: 8300000, guid: f0ed75ff55b220c41a54c3b6eaf367aa, type: 3}
+  - {fileID: 8300000, guid: 98d832635009ae541b94d5eebc98084f, type: 3}
+  - {fileID: 8300000, guid: 452c60123aa648c48aa6ed6fce03f690, type: 3}
+  - {fileID: 8300000, guid: 2531b536704aa2343a950b6c48d33650, type: 3}
+  - {fileID: 8300000, guid: 3a33fd475f8a855408b9add2eed55f54, type: 3}
+  - {fileID: 8300000, guid: 48a8e46ef6954d54da2040ee03d661fb, type: 3}
+  - {fileID: 8300000, guid: d4cfc68c95d8bae4b81629f503e278ee, type: 3}
+  - {fileID: 8300000, guid: 2415f59873ebec344867936e05775e2d, type: 3}
+  - {fileID: 8300000, guid: 0c41395ae645d5c4998e7220c0af9706, type: 3}
+  - {fileID: 8300000, guid: 226469b372026f64e83626256e09fdf1, type: 3}
+  - {fileID: 8300000, guid: 649ddfb1ccc1235439a4313d2105d466, type: 3}
+  - {fileID: 8300000, guid: 00f03caffb22a864fa0fddef7e221894, type: 3}
+  - {fileID: 8300000, guid: 2233e6bc242e1064abfc782773e23564, type: 3}
+  - {fileID: 8300000, guid: dff5b652bc030834b86ec5741be1a5bf, type: 3}
+  - {fileID: 8300000, guid: 7bf2df461fa882e4a9deebc41eff1048, type: 3}
+  - {fileID: 8300000, guid: 980dacb198610ac4ebfbb5c915c832fb, type: 3}
+  - {fileID: 8300000, guid: 96f33cf077ddb814d99c0800336d61ff, type: 3}
+  - {fileID: 8300000, guid: 32517a02ecdb22046935f626e34a5283, type: 3}
+  - {fileID: 8300000, guid: 01def58d29588dd4085264fe3e2a5062, type: 3}
+  - {fileID: 8300000, guid: 4df55561cae971949a0eb0ee42121993, type: 3}
+  landingClips:
+  - {fileID: 8300000, guid: 5a16d097c4caac4439906bd4ae3638bc, type: 3}
+  - {fileID: 8300000, guid: 3b1a59db39000de4e8e1a420b527ea89, type: 3}
+  - {fileID: 8300000, guid: ef59e170f25439248ad25b1b721c54cf, type: 3}
+  - {fileID: 8300000, guid: c6bfd82818487d644b80e226b9104895, type: 3}
+  - {fileID: 8300000, guid: 64691fd0830de7549b70be0c34279006, type: 3}
+  scuffClips: []
+  volumeMultiplier: 1
+  basePitch: 1

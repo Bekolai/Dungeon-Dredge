@@ -1,0 +1,19 @@
+{
+    "name": "OmniShadePBR.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:bde96448bae1c4e20857b7c03aa91694",
+        "GUID:78bd2ddd6e276394a9615c203e574844"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

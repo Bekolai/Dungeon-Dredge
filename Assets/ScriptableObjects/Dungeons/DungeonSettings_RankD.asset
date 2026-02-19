@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c72f69d197887f48b0a70c5c330baf8, type: 3}
+  m_Name: DungeonSettings_RankD
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Dungeon.DungeonSettings
+  rank: 2
+  gridSize: {x: 9, y: 9}
+  roomSize: {x: 24, y: 24}
+  corridorWidth: 4
+  minRooms: 18
+  maxRooms: 25
+  lootRoomChance: 0.25
+  enemyRoomChance: 0.5
+  emptyRoomChance: 0.25
+  minEnemiesPerRoom: 1
+  maxEnemiesPerRoom: 4
+  enemyDensity: 0.7
+  minLootPerRoom: 3
+  maxLootPerRoom: 7
+  rareLootChance: 0.2
+  floorMaterial: {fileID: 0}
+  wallMaterial: {fileID: 0}
+  ceilingMaterial: {fileID: 0}
+  ambientColor: {r: 0.15, g: 0.18, b: 0.2, a: 1}
+  ambientIntensity: 0.25
+  spawnRoomPrefabs: []
+  lootRoomPrefabs: []
+  enemyRoomPrefabs: []
+  extractionRoomPrefabs: []
+  corridorPrefabs: []

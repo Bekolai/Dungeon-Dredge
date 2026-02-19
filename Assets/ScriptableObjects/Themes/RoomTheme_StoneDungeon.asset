@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85ad3d1712c53d4c852e47f595150ba, type: 3}
+  m_Name: RoomTheme_StoneDungeon
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Dungeon.RoomTheme
+  themeName: Stone Dungeon
+  defaultSurface: 0
+  ambientColor: {r: 0.4, g: 0.35, b: 0.3, a: 1}
+  ambientIntensity: 0.5
+  torchColor: {r: 1, g: 0.7, b: 0.4, a: 1}
+  lightSources:
+  - prefab: {fileID: 0}
+    spawnWeight: 0
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  minLightSources: 2
+  maxLightSources: 4
+  largeProps:
+  - prefab: {fileID: 8233203517142235914, guid: ef6f1e9248e84604b818bc86ca1edf54, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  - prefab: {fileID: 7210146114000951812, guid: 0e41f9a8e4d89d3458009e8c3479a96c, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  minLargeProps: 1
+  maxLargeProps: 3
+  smallProps:
+  - prefab: {fileID: 7210146114000951812, guid: 0e41f9a8e4d89d3458009e8c3479a96c, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  minSmallProps: 3
+  maxSmallProps: 8
+  wallDecorations:
+  - prefab: {fileID: 7210146114000951812, guid: 0e41f9a8e4d89d3458009e8c3479a96c, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  minWallDecorations: 1
+  maxWallDecorations: 4
+  cornerProps:
+  - prefab: {fileID: 7210146114000951812, guid: 0e41f9a8e4d89d3458009e8c3479a96c, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  minCornerProps: 0
+  maxCornerProps: 2
+  floorClutter: []
+  minFloorClutter: 2
+  maxFloorClutter: 6
+  specialProps:
+  - prefab: {fileID: 7210146114000951812, guid: 0e41f9a8e4d89d3458009e8c3479a96c, type: 3}
+    spawnWeight: 10
+    randomYRotation: 0
+    scaleVariation: 0
+    positionOffset: {x: 0, y: 0, z: 0}
+  specialPropChance: 0.15

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: rusty_key
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: rusty_key
+  itemName: Rusty Key
+  description: A common scrap from dungeon rank F.
+  icon: {fileID: 21300000, guid: 2c955b6bb55141542a15d9cc045dacf3, type: 3}
+  width: 1
+  height: 1
+  customShape: 
+  canRotate: 1
+  weight: 0.2
+  goldValue: 3
+  rarity: 0
+  category: 0
+  minimumRank: 0
+  spawnWeight: 1
+  worldPrefab: {fileID: 3383942838487790258, guid: b685c189b8b93a54885137a7fe45962c, type: 3}
+  rarityColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}

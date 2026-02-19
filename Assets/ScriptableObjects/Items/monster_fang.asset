@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: monster_fang
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: monster_fang
+  itemName: Monster Fang
+  description: A uncommon material from dungeon rank E.
+  icon: {fileID: 21300000, guid: 3faebf8670b357f4ba3f5bcccb8eced9, type: 3}
+  width: 1
+  height: 1
+  customShape: 
+  canRotate: 1
+  weight: 0.2
+  goldValue: 40
+  rarity: 1
+  category: 1
+  minimumRank: 1
+  spawnWeight: 1.3
+  worldPrefab: {fileID: 0}
+  rarityColor: {r: 0.3, g: 0.8, b: 0.3, a: 1}

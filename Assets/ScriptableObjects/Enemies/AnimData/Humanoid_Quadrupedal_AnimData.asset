@@ -1,0 +1,224 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57dcd7e18609af04fa4e88e74c007ab2, type: 3}
+  m_Name: Humanoid_Quadrupedal_AnimData
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.AI.EnemyAnimationData
+  _animatorController: {fileID: 9100000, guid: ca7efa7cf5d14f941bd4df379fbc1f94, type: 2}
+  _useRootMotion: 0
+  _preferInPlaceAnimations: 1
+  _locomotion:
+    speedParameter: Speed
+    horizontalParameter: Horizontal
+    verticalParameter: Vertical
+    isMovingParameter: IsMoving
+    idleThreshold: 0.1
+    runThreshold: 0.6
+    maxSpeed: 8
+    hasDirectionalMovement: 0
+    useBlendTree: 1
+  _attacks:
+  - attackName: Sit_Attack_1
+    triggerName: Attack_1
+    attackIndex: 0
+    hitTimeNormalized: 0.4
+    duration: 1.4666667
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_2
+    triggerName: Attack_2
+    attackIndex: 1
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_3
+    triggerName: Attack_3
+    attackIndex: 2
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_4
+    triggerName: Attack_4
+    attackIndex: 3
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_5
+    triggerName: Attack_5
+    attackIndex: 4
+    hitTimeNormalized: 0.4
+    duration: 1.8000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_6
+    triggerName: Attack_6
+    attackIndex: 5
+    hitTimeNormalized: 0.4
+    duration: 1.4000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_7
+    triggerName: Attack_7
+    attackIndex: 6
+    hitTimeNormalized: 0.4
+    duration: 1.3333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_8
+    triggerName: Attack_8
+    attackIndex: 7
+    hitTimeNormalized: 0.4
+    duration: 1.8000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_From_Ground
+    triggerName: Attack_9
+    attackIndex: 8
+    hitTimeNormalized: 0.4
+    duration: 1.6666667
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_1
+    triggerName: Attack_10
+    attackIndex: 9
+    hitTimeNormalized: 0.4
+    duration: 1.4666667
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_2
+    triggerName: Attack_11
+    attackIndex: 10
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_3
+    triggerName: Attack_12
+    attackIndex: 11
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_4
+    triggerName: Attack_13
+    attackIndex: 12
+    hitTimeNormalized: 0.4
+    duration: 1.1333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_5
+    triggerName: Attack_14
+    attackIndex: 13
+    hitTimeNormalized: 0.4
+    duration: 1.8000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_6
+    triggerName: Attack_15
+    attackIndex: 14
+    hitTimeNormalized: 0.4
+    duration: 1.4000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_7
+    triggerName: Attack_16
+    attackIndex: 15
+    hitTimeNormalized: 0.4
+    duration: 1.3333334
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_8
+    triggerName: Attack_17
+    attackIndex: 16
+    hitTimeNormalized: 0.4
+    duration: 1.8000001
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  - attackName: Sit_Attack_From_Ground
+    triggerName: Attack_18
+    attackIndex: 17
+    hitTimeNormalized: 0.4
+    duration: 1.6666667
+    damageMultiplier: 1
+    rangeMultiplier: 1
+    usesRootMotion: 0
+    isHeavyAttack: 0
+    canUseWhileMoving: 0
+  _hitReactionTriggers:
+  - Hit
+  _hasDirectionalHits: 0
+  _hitFrontTrigger: Get_Hit
+  _hitBackTrigger: Get_Hit_Back
+  _hitLeftTrigger: Get_Hit_Left
+  _hitRightTrigger: Get_Hit_Right
+  _deathTriggers:
+  - Death
+  _shoutTrigger: Shout
+  _jumpTrigger: Jump
+  _emergenceTrigger: Emergence
+  _hasSpecialAnimations: 0
+  _attackHitTime: 0.3
+  _attackDuration: 1
+  _deathDuration: 2

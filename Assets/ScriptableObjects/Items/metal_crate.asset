@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9165c2c82a4beb047a749214356d5ae6, type: 3}
+  m_Name: metal_crate
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Inventory.ItemData
+  itemId: metal_crate
+  itemName: Metal Crate
+  description: A uncommon material from dungeon rank E.
+  icon: {fileID: 21300000, guid: a6f5cac2f6b2da74d8bdc746bb50d2e5, type: 3}
+  width: 2
+  height: 2
+  customShape: 
+  canRotate: 1
+  weight: 3
+  goldValue: 30
+  rarity: 1
+  category: 1
+  minimumRank: 1
+  spawnWeight: 0.4
+  worldPrefab: {fileID: 1699814149513603174, guid: 42549f99386fe0546ad52f244581d3ab, type: 3}
+  rarityColor: {r: 0.3, g: 0.8, b: 0.3, a: 1}

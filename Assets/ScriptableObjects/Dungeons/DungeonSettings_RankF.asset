@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c72f69d197887f48b0a70c5c330baf8, type: 3}
+  m_Name: DungeonSettings_RankF
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Dungeon.DungeonSettings
+  rank: 0
+  gridSize: {x: 5, y: 5}
+  roomSize: {x: 20, y: 20}
+  roomActualSize: 16
+  corridorWidth: 4
+  minRooms: 14
+  maxRooms: 20
+  lootRoomChance: 0.35
+  enemyRoomChance: 0.35
+  emptyRoomChance: 0.3
+  minEnemiesPerRoom: 0
+  maxEnemiesPerRoom: 1
+  enemyDensity: 0.1
+  minLootPerRoom: 2
+  maxLootPerRoom: 5
+  rareLootChance: 0.05
+  mineableSpawnChance: 0.25
+  minMineablesPerRoom: 0
+  maxMineablesPerRoom: 2
+  mineablePrefabs: []
+  floorMaterial: {fileID: 0}
+  wallMaterial: {fileID: 0}
+  ceilingMaterial: {fileID: 0}
+  ambientColor: {r: 0.4, g: 0.4, b: 0.45, a: 1}
+  ambientIntensity: 0.4
+  atmosphereFogDensity: 0
+  atmosphereAmbientIntensity: 0
+  roomTheme: {fileID: 11400000, guid: c424b68d6dc7fcd42802bc56b55f0b2a, type: 2}
+  additionalThemes: []
+  emptyRoomPrefabs:
+  - {fileID: 3567833359096388918, guid: c0ad0c61d0866aa46bf7d819509eb493, type: 3}
+  portalRoomPrefabs:
+  - {fileID: 5655973682646413568, guid: b51804f3d1b54d542a8994d3099bd92b, type: 3}
+  lootRoomPrefabs:
+  - {fileID: 991112357414579112, guid: 4d4c97e0ca185eb45ac2f9b8444f2c1d, type: 3}
+  enemyRoomPrefabs:
+  - {fileID: 572511057526863439, guid: 597085f23317282479185cbd16b3c3f0, type: 3}
+  bossRoomPrefabs:
+  - {fileID: 7087856405396305703, guid: 003554b0255b7b04ca7dcc082eb57eb2, type: 3}
+  straightCorridorPrefabs:
+  - {fileID: 7701576210172536915, guid: b894d56d0eeacd642b3a3db960642c18, type: 3}
+  lCorridorPrefabs:
+  - {fileID: 4704144961733215766, guid: 9bfbff0a1cb412741802be3a82d9d0fc, type: 3}
+  tJunctionPrefabs:
+  - {fileID: 3323639536703959767, guid: 4211a7f20a082fd428de078b3d6f814e, type: 3}
+  crossroadPrefabs:
+  - {fileID: 7120798108346999271, guid: 08db9b73280dfc040b5ad65b92c65cec, type: 3}
