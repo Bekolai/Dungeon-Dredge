@@ -17,6 +17,10 @@ namespace DungeonDredge.Dungeon
         [Header("Current Dungeon")]
         [SerializeField] private DungeonRank currentRank = DungeonRank.F;
 
+        [Header("Timer Settings")]
+        [SerializeField] private float minDungeonTime = 300f; // 5 mins
+        [SerializeField] private float maxDungeonTime = 1200f; // 20 mins
+
         [Header("Player")]
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private BackpackData startingBackpack;
@@ -25,12 +29,17 @@ namespace DungeonDredge.Dungeon
         // State
         private GameObject currentPlayer;
         private bool dungeonActive = false;
+        private float timeRemaining;
+        private float totalDungeonTime;
 
         // Properties
         public DungeonRank CurrentRank => currentRank;
         public bool IsDungeonActive => dungeonActive;
         public DungeonGenerator Generator => generator;
         public GameObject CurrentPlayer => currentPlayer;
+        public float TimeRemaining => timeRemaining;
+        public float TotalDungeonTime => totalDungeonTime;
+        public float TimeRemainingRatio => totalDungeonTime > 0 ? timeRemaining / totalDungeonTime : 0;
 
         // Events
         public System.Action<DungeonRank> OnDungeonStarted;
@@ -76,6 +85,23 @@ namespace DungeonDredge.Dungeon
             }
         }
 
+        private void Update()
+        {
+            if (dungeonActive)
+            {
+                if (timeRemaining > 0)
+                {
+                    timeRemaining -= Time.deltaTime;
+                    if (timeRemaining <= 0)
+                    {
+                        timeRemaining = 0;
+                        Debug.LogWarning("[DungeonManager] Dungeon timer expired! Player failed to extract in time.");
+                        EndDungeon(false);
+                    }
+                }
+            }
+        }
+
         public void StartDungeon(DungeonRank rank)
         {
             if (dungeonActive)
@@ -86,6 +112,10 @@ namespace DungeonDredge.Dungeon
 
             currentRank = rank;
             dungeonActive = true;
+
+            // Initialize Timer
+            totalDungeonTime = Random.Range(minDungeonTime, maxDungeonTime);
+            timeRemaining = totalDungeonTime;
 
             // Generate dungeon
             generator.GenerateDungeon(rank);

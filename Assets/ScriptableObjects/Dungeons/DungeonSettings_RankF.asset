@@ -22,9 +22,9 @@ MonoBehaviour:
   lootRoomChance: 0.35
   enemyRoomChance: 0.35
   emptyRoomChance: 0.3
-  minEnemiesPerRoom: 0
+  minEnemiesPerRoom: 1
   maxEnemiesPerRoom: 1
-  enemyDensity: 0.1
+  enemyDensity: 1
   minLootPerRoom: 2
   maxLootPerRoom: 5
   rareLootChance: 0.05

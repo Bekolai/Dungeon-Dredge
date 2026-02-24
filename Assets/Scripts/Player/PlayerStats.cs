@@ -49,8 +49,10 @@ namespace DungeonDredge.Player
         [SerializeField] private float overloadedXPPerMeter = 1f;
 
         [Header("Endurance Settings")]
-        [SerializeField] private float staminaDepletionXP = 50f;
-        [SerializeField] private float sprintXPPerSecond = 5f;
+        [Tooltip("XP granted per 10 meters distance moved when NOT overloaded.")]
+        [SerializeField] private float enduranceXPPerMeter = 1f;
+        [Tooltip("Bonus XP granted per second when sprinting.")]
+        [SerializeField] private float sprintXPPerSecond = 2f;
 
         [Header("Perception Settings")]
         [SerializeField] private float baseThreatRadius = 10f;
@@ -60,9 +62,11 @@ namespace DungeonDredge.Player
 
         // Tracking for XP triggers
         private float distanceWhileOverloaded = 0f;
+        private float distanceWhileUnderloaded = 0f;
         private float sprintTime = 0f;
         private Vector3 lastPosition;
         private bool wasOverloaded = false;
+        private bool wasUnderloaded = false;
 
         // References
         private PlayerMovement playerMovement;
@@ -88,12 +92,6 @@ namespace DungeonDredge.Player
 
         private void Start()
         {
-            // Subscribe to stamina events
-            if (staminaSystem != null)
-            {
-                staminaSystem.OnStaminaDepleted += OnStaminaDepleted;
-            }
-
             OnLevelUp += (type, level) => DungeonDredge.Audio.AudioManager.Instance?.PlayLevelUp();
 
             // Apply initial stats
@@ -102,10 +100,7 @@ namespace DungeonDredge.Player
 
         private void OnDestroy()
         {
-            if (staminaSystem != null)
-            {
-                staminaSystem.OnStaminaDepleted -= OnStaminaDepleted;
-            }
+            
         }
 
         private void Update()
@@ -149,25 +144,48 @@ namespace DungeonDredge.Player
         {
             if (playerMovement == null) return;
 
-            // Track sprint time for XP
+            // 1. Distance tracking while NOT overloaded
+            bool isOverloaded = playerMovement.CurrentTier != EncumbranceTier.Light;
+
+            if (!isOverloaded && playerMovement.IsMoving)
+            {
+                float distance = Vector3.Distance(transform.position, lastPosition);
+                distanceWhileUnderloaded += distance;
+
+                // Award Endurance XP every 10 meters
+                if (distanceWhileUnderloaded >= 10f)
+                {
+                    float xpToAward = (distanceWhileUnderloaded / 10f) * enduranceXPPerMeter;
+                    AwardEnduranceXP(xpToAward);
+                    distanceWhileUnderloaded = distanceWhileUnderloaded % 10f;
+                }
+
+                wasUnderloaded = true;
+            }
+            else if (isOverloaded && wasUnderloaded)
+            {
+                wasUnderloaded = false;
+            }
+
+            // 2. Bonus sprint tracking
             if (playerMovement.IsSprinting)
             {
                 sprintTime += Time.deltaTime;
                 
-                // Award XP every second of sprinting
+                // Award bonus XP every second of sprinting
                 if (sprintTime >= 1f)
                 {
                     AwardEnduranceXP(sprintXPPerSecond);
-                    sprintTime = 0f;
+                    sprintTime -= 1f;
                 }
+            }
+            else
+            {
+                sprintTime = 0f;
             }
         }
 
-        private void OnStaminaDepleted()
-        {
-            // Award endurance XP when stamina fully depletes
-            AwardEnduranceXP(staminaDepletionXP);
-        }
+
 
         public void AwardStrengthXP(float amount)
         {

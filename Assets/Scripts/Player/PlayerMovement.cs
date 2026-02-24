@@ -26,6 +26,7 @@ namespace DungeonDredge.Player
         [SerializeField] private float crouchTransitionSpeed = 10f;
 
         [Header("Camera Sway (Snail Tier)")]
+        [SerializeField] private bool enableSnailSway = true;
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private float maxSwayAmount = 0.5f;
         [SerializeField] private float swaySpeed = 2f;
@@ -165,7 +166,7 @@ namespace DungeonDredge.Player
             controller.Move(velocity * Time.deltaTime);
 
             // Apply camera sway for Snail tier
-            if (currentTier == EncumbranceTier.Snail && IsMoving)
+            if (enableSnailSway && currentTier == EncumbranceTier.Snail && IsMoving)
             {
                 ApplyCameraSway();
             }

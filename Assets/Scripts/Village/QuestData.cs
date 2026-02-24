@@ -68,12 +68,16 @@ namespace DungeonDredge.Village
         public DungeonRank targetDungeon;
         public bool mustExtract = true;
 
+        [Header("Combat/Mining Objective")]
+        public string targetEnemyName; // For StunEnemy
+
         public enum ObjectiveType
         {
             CollectItem,
             ExtractFromDungeon,
             ExploreRooms,
-            DefeatEnemies // Even though non-lethal, could be "stun X enemies"
+            StunEnemy, // Replacing DefeatEnemies
+            MineNode
         }
     }
 }

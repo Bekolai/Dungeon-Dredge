@@ -19,6 +19,7 @@ namespace DungeonDredge.Tools
 
         [Header("Visual")]
         [SerializeField] private ParticleSystem shockwaveEffect;
+        [SerializeField] private GameObject explosionEffectPrefab;
         [SerializeField] private float effectDuration = 0.5f;
 
         [Header("Audio")]
@@ -70,7 +71,7 @@ namespace DungeonDredge.Tools
             // Attach grenade behavior
             var behavior = grenade.GetComponent<RepelGrenade>();
             if (behavior == null) behavior = grenade.AddComponent<RepelGrenade>();
-            behavior.Initialize(repelRadius, repelForce, stunDuration, enemyLayer, sonicBoomSound);
+            behavior.Initialize(repelRadius, repelForce, stunDuration, enemyLayer, sonicBoomSound, explosionEffectPrefab);
 
             // Consume charge and cooldown
             ConsumeCharge();
@@ -137,15 +138,17 @@ namespace DungeonDredge.Tools
         private float stunDuration;
         private LayerMask enemyLayer;
         private AudioClip detonationSound;
+        private GameObject explosionEffectPrefab;
         private bool hasDetonated;
 
-        public void Initialize(float radius, float force, float stun, LayerMask layer, AudioClip sound)
+        public void Initialize(float radius, float force, float stun, LayerMask layer, AudioClip sound, GameObject effectPrefab)
         {
             repelRadius = radius;
             repelForce = force;
             stunDuration = stun;
             enemyLayer = layer;
             detonationSound = sound;
+            explosionEffectPrefab = effectPrefab;
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -196,6 +199,12 @@ namespace DungeonDredge.Tools
                 Intensity = 1.5f,
                 Source = gameObject
             });
+
+            // Effect
+            if (explosionEffectPrefab != null)
+            {
+                Instantiate(explosionEffectPrefab, transform.position, Quaternion.identity);
+            }
 
             // Destroy after brief delay
             Destroy(gameObject, 0.5f);

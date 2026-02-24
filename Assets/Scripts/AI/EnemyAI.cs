@@ -88,11 +88,13 @@ namespace DungeonDredge.AI
         private bool isStunned;
         private bool attackInProgress;
         private bool attackDamageApplied;
+        private bool isDead;
         private bool isBeingPushed;
         private float nextAttackAllowedTime;
         private bool deathNotified;
-        private UnityAction healthDeathHandler;
+        private UnityEngine.Events.UnityAction healthDeathHandler;
         private Coroutine activePushRoutine;
+        private Collider[] colliders;
 
         // Detection
         private float lastDetectionCheck;
@@ -132,6 +134,7 @@ namespace DungeonDredge.AI
             agent = GetComponent<NavMeshAgent>();
             agent.speed = walkSpeed;
             patrolAnchor = transform.position;
+            colliders = GetComponentsInChildren<Collider>();
 
             InitializeAnimationComponents();
             InitializeStateMachine();
@@ -159,6 +162,8 @@ namespace DungeonDredge.AI
 
         private void Update()
         {
+            if (isDead) return;
+
             // Always update state machine so stun timer can count down
             if (isBeingPushed)
             {
@@ -280,6 +285,7 @@ namespace DungeonDredge.AI
                 float scaledHealth = data.GetScaledHealth(dungeonRank);
                 healthComponent.ModifyMaxHealth(scaledHealth - healthComponent.MaxHealth);
                 healthComponent.Revive();
+                healthComponent.DestroyOnDeath = false; // We handle destruction after animation
             }
 
             Debug.Log($"[EnemyAI] {enemyName} initialized: Rank={dungeonRank}, Behavior={behaviorType}, HP={data.GetScaledHealth(dungeonRank)}, Damage={attackDamage}");
@@ -559,22 +565,34 @@ namespace DungeonDredge.AI
 
         public void TakeDamage(float damage)
         {
-            // Enemies don't take damage in this game design
-            // But they can be stunned/pushed
+            if (healthComponent != null)
+            {
+                healthComponent.TakeDamage(damage);
+            }
         }
 
         public void Stun(float duration)
         {
+            if (isDead) return;
+
             var stunnedState = stateMachine.GetState<StunnedState>();
             if (stunnedState != null)
             {
                 stunnedState.SetStunDuration(duration);
                 stateMachine.SetState<StunnedState>();
+
+                EventBus.Publish(new EnemyStunnedEvent 
+                { 
+                    Enemy = gameObject, 
+                    EnemyName = enemyName 
+                });
             }
         }
 
         public void ApplyPush(Vector3 force)
         {
+            if (isDead) return;
+
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
                 Stun(1.5f);
@@ -842,36 +860,31 @@ namespace DungeonDredge.AI
 
         private void HandleHealthDeath()
         {
-            SpawnConfiguredDrops();
+            if (isDead) return;
+            isDead = true;
+
+            // Stop AI
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                agent.enabled = false;
+            }
+
+            // Disable Physics
+            if (colliders != null)
+            {
+                foreach (var col in colliders) col.enabled = false;
+            }
+
+            // Spawn Loot via Scalable Component
+            var lootSystem = GetComponent<EnemyLoot>();
+            if (lootSystem == null) lootSystem = gameObject.AddComponent<EnemyLoot>();
+            lootSystem.SpawnLoot(enemyData);
+
+            PlayDeathAnimation();
             NotifyDeathOnce();
         }
 
-        private void SpawnConfiguredDrops()
-        {
-            if (enemyData == null || enemyData.itemDrops == null || enemyData.itemDrops.Length == 0)
-                return;
-
-            foreach (var drop in enemyData.itemDrops)
-            {
-                if (drop == null || drop.item == null || drop.item.worldPrefab == null)
-                    continue;
-
-                if (Random.value > drop.dropChance)
-                    continue;
-
-                int quantity = Random.Range(
-                    Mathf.Max(1, drop.minQuantity),
-                    Mathf.Max(Mathf.Max(1, drop.minQuantity), drop.maxQuantity) + 1);
-
-                for (int i = 0; i < quantity; i++)
-                {
-                    Vector3 offset = new Vector3(Random.Range(-0.35f, 0.35f), 0.1f, Random.Range(-0.35f, 0.35f));
-                    GameObject loot = Instantiate(drop.item.worldPrefab, transform.position + offset, Quaternion.identity);
-                    var worldItem = loot.GetComponent<WorldItem>() ?? loot.GetComponentInChildren<WorldItem>();
-                    worldItem?.SetItemData(drop.item);
-                }
-            }
-        }
 
         private void NotifyDeathOnce()
         {
@@ -961,6 +974,7 @@ namespace DungeonDredge.AI
         private void HandleDeathAnimationComplete()
         {
             NotifyDeathOnce();
+            Destroy(gameObject, 3f); // Keep the body for a short while before removing
         }
 
         #endregion

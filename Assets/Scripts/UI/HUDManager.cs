@@ -43,6 +43,9 @@ namespace DungeonDredge.UI
         [SerializeField] private float minPulseSpeed = 0.5f;
         [SerializeField] private float maxPulseSpeed = 4f;
         [SerializeField] private float threatFadeSpeed = 2f;
+        [SerializeField] private bool enableHeartbeatAudio = true;
+        [SerializeField] private AudioSource heartbeatAudioSource;
+        [SerializeField] private AudioClip heartbeatClip;
 
         [Header("Weight Bar")]
         [SerializeField] private Slider weightSlider;
@@ -56,6 +59,13 @@ namespace DungeonDredge.UI
         [SerializeField] private CanvasGroup staminaGroup;
         [SerializeField] private Color normalStaminaColor = Color.green;
         [SerializeField] private Color exhaustedStaminaColor = Color.red;
+
+        [Header("Dungeon Timer")]
+        [SerializeField] private CanvasGroup timerGroup;
+        [SerializeField] private TextMeshProUGUI timerText;
+        [SerializeField] private Color normalTimerColor = Color.white;
+        [SerializeField] private Color urgentTimerColor = Color.red;
+        [SerializeField] private float urgentTimeThreshold = 60f; // 1 min left
 
         [Header("Tool Hotbar")]
         [SerializeField] private ToolSlotUI[] toolSlots;
@@ -93,6 +103,8 @@ namespace DungeonDredge.UI
         private float pulseTimer = 0f;
         private bool isStaminaVisible = false;
         private float temporaryPromptTimer = 0f;
+
+        private Dictionary<StatType, int> currentStatLevels = new Dictionary<StatType, int>();
 
         // Notifications: list of active notification entries
         private class NotificationEntry
@@ -209,10 +221,43 @@ namespace DungeonDredge.UI
             UpdateThreatPulse();
             UpdateStaminaVisibility();
             UpdateNotifications();
+            UpdateTimer();
             UpdateTemporaryPromptTimer();
             if (temporaryPromptTimer <= 0f)
             {
                 UpdateInteractionCheck();
+            }
+        }
+
+        private void UpdateTimer()
+        {
+            if (DungeonManager.Instance != null && DungeonManager.Instance.IsDungeonActive)
+            {
+                if (timerGroup != null) timerGroup.alpha = 1f;
+
+                if (timerText != null)
+                {
+                    float timeRemaining = DungeonManager.Instance.TimeRemaining;
+                    int minutes = Mathf.FloorToInt(timeRemaining / 60f);
+                    int seconds = Mathf.FloorToInt(timeRemaining % 60f);
+                    
+                    timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+                    
+                    if (timeRemaining <= urgentTimeThreshold)
+                    {
+                        // Pulse the urgent color
+                        float pulse = Mathf.PingPong(Time.time * 2f, 1f);
+                        timerText.color = Color.Lerp(normalTimerColor, urgentTimerColor, pulse);
+                    }
+                    else
+                    {
+                        timerText.color = normalTimerColor;
+                    }
+                }
+            }
+            else
+            {
+                if (timerGroup != null) timerGroup.alpha = 0f;
             }
         }
 
@@ -337,6 +382,10 @@ namespace DungeonDredge.UI
             if (currentThreatLevel <= 0.01f)
             {
                 threatVignette.gameObject.SetActive(false);
+                if (heartbeatAudioSource != null && heartbeatAudioSource.isPlaying)
+                {
+                    heartbeatAudioSource.Stop();
+                }
                 return;
             }
 
@@ -352,6 +401,24 @@ namespace DungeonDredge.UI
             Color vignetteColor = threatVignette.color;
             vignetteColor.a = alpha;
             threatVignette.color = vignetteColor;
+
+            // Heartbeat audio mapping
+            if (enableHeartbeatAudio && heartbeatAudioSource != null && heartbeatClip != null)
+            {
+                if (!heartbeatAudioSource.isPlaying)
+                {
+                    heartbeatAudioSource.clip = heartbeatClip;
+                    heartbeatAudioSource.loop = true;
+                    heartbeatAudioSource.Play();
+                }
+                heartbeatAudioSource.volume = currentThreatLevel * 0.8f;
+                // Map the pitch to the pulse speed so it beats faster
+                heartbeatAudioSource.pitch = Mathf.Lerp(0.9f, 1.4f, currentThreatLevel);
+            }
+            else if (heartbeatAudioSource != null && heartbeatAudioSource.isPlaying)
+            {
+                heartbeatAudioSource.Stop(); // Stop if disabled during gameplay
+            }
         }
 
         #endregion
@@ -391,6 +458,7 @@ namespace DungeonDredge.UI
 
         private void OnStaminaChanged(StaminaChangedEvent evt)
         {
+
             UpdateStaminaUI(evt.Ratio, evt.CurrentStamina, evt.MaxStamina);
         }
 
@@ -559,8 +627,18 @@ namespace DungeonDredge.UI
 
         private void OnPlayerStatChanged(PlayerStatChangedEvent evt)
         {
-            string statName = evt.StatType.ToString();
-            ShowNotification($"{statName} level up {evt.NewLevel}!", notificationDefaultDuration);
+            if (!currentStatLevels.ContainsKey(evt.StatType))
+            {
+                currentStatLevels[evt.StatType] = evt.NewLevel;
+                return; // Don't notify on initial load/spawn
+            }
+
+            if (evt.NewLevel > currentStatLevels[evt.StatType])
+            {
+                currentStatLevels[evt.StatType] = evt.NewLevel;
+                string statName = evt.StatType.ToString();
+                ShowNotification($"{statName} level up {evt.NewLevel}!", notificationDefaultDuration);
+            }
         }
 
         private void UpdateTemporaryPromptTimer()

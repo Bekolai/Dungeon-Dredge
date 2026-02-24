@@ -6,9 +6,16 @@ using DungeonDredge.Tools;
 
 namespace DungeonDredge.Dungeon
 {
+    public enum MiningMode
+    {
+        DestroyAtEnd,
+        DropPerHit
+    }
+
     public class MineableNode : MonoBehaviour, IInteractable
     {
         [Header("Mining")]
+        [SerializeField] private MiningMode miningMode = MiningMode.DestroyAtEnd;
         [SerializeField] private int hitsToMine = 3;
         [SerializeField] private float interactionNoise = 0.45f;
         [Tooltip("If true, the player must have a pickaxe tool equipped to mine.")]
@@ -90,9 +97,31 @@ namespace DungeonDredge.Dungeon
                 Source = player.gameObject
             });
 
-            if (currentHits <= 0)
+            if (miningMode == MiningMode.DropPerHit)
             {
-                Mine(player);
+                // Drop 1 piece of ore on every hit
+                DropLoot(player, 1);
+
+                if (dropItem != null)
+                {
+                    EventBus.Publish(new NodeMinedEvent { ItemId = dropItem.itemId });
+                }
+                
+                if (currentHits <= 0)
+                {
+                    if (breakEffectPrefab != null)
+                    {
+                        Instantiate(breakEffectPrefab, dropPoint.position, Quaternion.identity);
+                    }
+                    Destroy(gameObject);
+                }
+            }
+            else // DestroyAtEnd
+            {
+                if (currentHits <= 0)
+                {
+                    Mine(player);
+                }
             }
         }
 
@@ -140,6 +169,19 @@ namespace DungeonDredge.Dungeon
             }
 
             int quantity = Random.Range(Mathf.Max(1, minDrops), Mathf.Max(Mathf.Max(1, minDrops), maxDrops) + 1);
+            DropLoot(player, quantity);
+
+            if (dropItem != null)
+            {
+                EventBus.Publish(new NodeMinedEvent { ItemId = dropItem.itemId });
+            }
+
+            Destroy(gameObject);
+        }
+
+        private void DropLoot(PlayerController player, int quantity)
+        {
+            if (dropItem == null) return;
             var playerInventory = player.GetComponent<PlayerInventory>();
 
             for (int i = 0; i < quantity; i++)
@@ -153,8 +195,6 @@ namespace DungeonDredge.Dungeon
                     worldItem?.SetItemData(dropItem);
                 }
             }
-
-            Destroy(gameObject);
         }
     }
 }

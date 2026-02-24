@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using DungeonDredge.Core;
+using DungeonDredge.Inventory;
+using DungeonDredge.Village;
 
 namespace DungeonDredge.Player
 {
@@ -13,6 +15,7 @@ namespace DungeonDredge.Player
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private PlayerMovement playerMovement;
         [SerializeField] private StaminaSystem staminaSystem;
+        [SerializeField] private PlayerStats playerStats;
         
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
@@ -37,6 +40,7 @@ namespace DungeonDredge.Player
         [SerializeField] private float shoveRange = 3f;
         [SerializeField] private float shoveAngle = 60f;
         [SerializeField] private float shoveStunDuration = 1.5f;
+        [SerializeField] private float shoveBaseDamage = 10f;
         [SerializeField] private float shoveCooldown = 1.0f;
         [SerializeField] private LayerMask enemyLayer;
         [SerializeField] private Animator armAnimator; // Reference to player arms for animation
@@ -80,6 +84,9 @@ namespace DungeonDredge.Player
             
             if (staminaSystem == null)
                 staminaSystem = GetComponent<StaminaSystem>();
+
+            if (playerStats == null)
+                playerStats = GetComponent<PlayerStats>();
 
             lanternController = GetComponent<LanternController>();
             if (lanternController == null)
@@ -222,9 +229,9 @@ namespace DungeonDredge.Player
             
             // Determine if we can sprint
             bool canSprint = sprintInput && 
-                             staminaSystem.CanSprint && 
                              playerMovement.CanSprint &&
-                             moveInput.y > 0; // Only sprint when moving forward
+                             moveInput.y > 0 &&
+                             (staminaSystem.CanSprint || (playerMovement.IsSprinting && !staminaSystem.IsExhausted));
 
             // Pass to movement system
             playerMovement.Move(moveDirection, canSprint, crouchInput);
@@ -304,6 +311,12 @@ namespace DungeonDredge.Player
         private void TryShove()
         {
             if (Time.time - lastShoveTime < shoveCooldown) return;
+
+            // Consume stamina
+            if (staminaSystem != null && !staminaSystem.TryUseShoveStamina())
+            {
+                return;
+            }
             
             lastShoveTime = Time.time;
             OnShove?.Invoke();
@@ -341,6 +354,25 @@ namespace DungeonDredge.Player
                         Vector3 pushDirection = directionToEnemy + Vector3.up * 0.3f;
                         enemy.ApplyPush(pushDirection.normalized * shoveForce);
                         enemy.Stun(shoveStunDuration);
+
+                        // Rank-based damage
+                        DungeonRank playerRank = QuestManager.Instance != null ? QuestManager.Instance.CurrentRank : DungeonRank.F;
+                        if (enemy.Rank < playerRank)
+                        {
+                            float damage = shoveBaseDamage;
+                            if (playerStats != null)
+                            {
+                                // Strength increases damage (10% per level above 1)
+                                damage *= (1f + (playerStats.Strength.level - 1) * 0.1f);
+                            }
+                            enemy.TakeDamage(damage);
+                            Debug.Log($"Shove dealt {damage} damage to {enemy.EnemyName} (Enemy Rank: {enemy.Rank}, Player Rank: {playerRank})");
+                        }
+                        else
+                        {
+                            Debug.Log($"Shove dealt NO damage to {enemy.EnemyName} (Enemy Rank: {enemy.Rank}, Player Rank: {playerRank})");
+                        }
+
                         hitSomething = true;
                     }
 

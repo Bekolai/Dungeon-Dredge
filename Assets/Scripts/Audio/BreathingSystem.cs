@@ -11,23 +11,21 @@ namespace DungeonDredge.Audio
         [SerializeField] private StaminaSystem staminaSystem;
         [SerializeField] private AudioSource breathingSource;
 
-        [Header("Breathing Sounds")]
-        [SerializeField] private AudioClip normalBreathingLoop;
-        [SerializeField] private AudioClip heavyBreathingLoop;
-        [SerializeField] private AudioClip exhaustedBreathingLoop;
-        [SerializeField] private AudioClip[] gasps;
+        [Header("Voice Settings")]
+        [SerializeField] private PlayerVoices playerVoices;
 
         [Header("Settings")]
-        [SerializeField] private float snailBreathingVolume = 0.5f;
-        [SerializeField] private float exhaustedBreathingVolume = 0.8f;
-        [SerializeField] private float staminaThresholdForHeavy = 0.5f;
-        [SerializeField] private float staminaThresholdForExhausted = 0.2f;
-        [SerializeField] private float fadeSpeed = 2f;
+        [SerializeField] private float exhaustedRecoveryThreshold = 0.2f;
 
         // State
-        private AudioClip currentLoop;
-        private float targetVolume = 0f;
-        private bool wasExhausted = false;
+        private bool isBreathingActive;
+        private float currentBreathVolume;
+        private AudioClip currentBreathClip;
+        private float lastBreathTime;
+        private float breathCooldown = 2f;
+        private EncumbranceTier currentBreathingTier;
+        private bool isRecoveringFromExhaustion = false;
+        private bool isBreathingExhausted = false;
 
         private void Awake()
         {
@@ -35,6 +33,8 @@ namespace DungeonDredge.Audio
                 playerMovement = GetComponent<PlayerMovement>();
             if (staminaSystem == null)
                 staminaSystem = GetComponent<StaminaSystem>();
+            if (breathingSource == null)
+                breathingSource = GetComponent<AudioSource>();
         }
 
         private void Start()
@@ -55,85 +55,116 @@ namespace DungeonDredge.Audio
 
         private void Update()
         {
-            UpdateBreathingState();
-            UpdateBreathingVolume();
+            HandleBreathing();
         }
 
-        private void UpdateBreathingState()
+        private void HandleBreathing()
         {
-            AudioClip targetLoop = null;
-            targetVolume = 0f;
+            if (playerVoices == null || breathingSource == null || playerMovement == null)
+                return;
 
-            // Check encumbrance tier
-            if (playerMovement != null && playerMovement.CurrentTier == EncumbranceTier.Snail)
-            {
-                targetLoop = heavyBreathingLoop;
-                targetVolume = snailBreathingVolume;
-            }
-
-            // Check stamina
+            // Update exhaustion state with hysteresis
             if (staminaSystem != null)
             {
-                float staminaRatio = staminaSystem.StaminaRatio;
-
-                if (staminaRatio < staminaThresholdForExhausted)
+                if (staminaSystem.IsExhausted)
                 {
-                    targetLoop = exhaustedBreathingLoop;
-                    targetVolume = exhaustedBreathingVolume;
+                    isRecoveringFromExhaustion = true;
                 }
-                else if (staminaRatio < staminaThresholdForHeavy)
+                else if (staminaSystem.StaminaRatio >= exhaustedRecoveryThreshold)
                 {
-                    targetLoop = heavyBreathingLoop;
-                    targetVolume = Mathf.Max(targetVolume, 0.4f);
+                    isRecoveringFromExhaustion = false;
                 }
             }
 
-            // Switch loop if needed
-            if (targetLoop != currentLoop)
+            bool shouldBeExhausted = isRecoveringFromExhaustion;
+            EncumbranceTier currentTier = playerMovement.CurrentTier;
+            bool shouldBeHeavy = currentTier == EncumbranceTier.Snail ||
+                                 (currentTier == EncumbranceTier.Heavy && staminaSystem != null &&
+                                  staminaSystem.StaminaRatio < 0.7f);
+
+            // Check if breathing state has changed
+            bool stateChanged = (shouldBeExhausted != isBreathingExhausted) ||
+                               (shouldBeHeavy && currentBreathingTier != currentTier) ||
+                               (!shouldBeExhausted && !shouldBeHeavy && isBreathingActive);
+
+            // Determine target breathing clip and volume
+            AudioClip targetClip = null;
+            float targetVolume = 0f;
+            AudioClip[] clipArray = null;
+
+            if (shouldBeExhausted)
             {
-                currentLoop = targetLoop;
-                if (breathingSource != null)
+                clipArray = playerVoices.exhaustedBreathing;
+                targetVolume = playerVoices.voiceVolume;
+            }
+            else if (shouldBeHeavy)
+            {
+                clipArray = playerVoices.heavyBreathing;
+                targetVolume = playerVoices.voiceVolume * 0.7f;
+            }
+            else
+            {
+                clipArray = playerVoices.idleBreathing;
+                targetVolume = playerVoices.voiceVolume * 0.5f;
+            }
+
+            if (clipArray != null && clipArray.Length > 0)
+            {
+                if (stateChanged || currentBreathClip == null)
                 {
-                    if (targetLoop != null)
-                    {
-                        breathingSource.clip = targetLoop;
-                        breathingSource.loop = true;
-                        if (!breathingSource.isPlaying)
-                            breathingSource.Play();
-                    }
-                    else
+                    targetClip = clipArray[Random.Range(0, clipArray.Length)];
+                }
+                else
+                {
+                    targetClip = currentBreathClip;
+                }
+            }
+
+            if (targetClip != null)
+            {
+                bool canPlayBreath = Time.time - lastBreathTime >= breathCooldown;
+
+                if (stateChanged || (canPlayBreath && !breathingSource.isPlaying))
+                {
+                    if (stateChanged && breathingSource.isPlaying)
                     {
                         breathingSource.Stop();
                     }
+
+                    breathingSource.pitch = Random.Range(playerVoices.pitchRange.x, playerVoices.pitchRange.y);
+                    breathingSource.PlayOneShot(targetClip, targetVolume);
+                    
+                    isBreathingActive = true;
+                    currentBreathClip = targetClip;
+                    currentBreathVolume = targetVolume;
+                    lastBreathTime = Time.time;
+                    isBreathingExhausted = shouldBeExhausted;
+                    currentBreathingTier = currentTier;
+
+                    breathCooldown = Random.Range(2f, 4f);
                 }
             }
-        }
-
-        private void UpdateBreathingVolume()
-        {
-            if (breathingSource == null) return;
-
-            breathingSource.volume = Mathf.Lerp(
-                breathingSource.volume, 
-                targetVolume, 
-                Time.deltaTime * fadeSpeed);
-
-            // Stop if volume is too low
-            if (breathingSource.volume < 0.01f && targetVolume == 0f)
+            else
             {
-                breathingSource.Stop();
+                if (breathingSource.isPlaying)
+                {
+                    breathingSource.Stop();
+                }
+                isBreathingActive = false;
             }
         }
 
         private void OnStaminaDepleted()
         {
-            // Play gasp sound
-            if (gasps != null && gasps.Length > 0 && !wasExhausted)
+            if (playerVoices != null && playerVoices.exhaustedBreathing != null && playerVoices.exhaustedBreathing.Length > 0)
             {
-                AudioClip gasp = gasps[Random.Range(0, gasps.Length)];
-                AudioManager.Instance?.PlaySoundAt(gasp, transform.position, 0.5f);
+                if (breathingSource != null && !breathingSource.isPlaying)
+                {
+                    AudioClip gasp = playerVoices.exhaustedBreathing[Random.Range(0, playerVoices.exhaustedBreathing.Length)];
+                    breathingSource.pitch = Random.Range(0.8f, 1.2f);
+                    breathingSource.PlayOneShot(gasp, playerVoices.voiceVolume);
+                }
             }
-            wasExhausted = true;
         }
     }
 }

@@ -400,7 +400,7 @@ namespace DungeonDredge.Enemies
             _currentAttack = null;
             _attackCoroutine = null;
 
-            if (_agent != null)
+            if (_agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh)
             {
                 _agent.isStopped = false;
             }
@@ -465,9 +465,13 @@ namespace DungeonDredge.Enemies
             _isInHitReaction = false;
 
             // Stop movement
-            if (_agent != null)
+            if (_agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh)
             {
                 _agent.isStopped = true;
+                _agent.enabled = false;
+            }
+            else if (_agent != null)
+            {
                 _agent.enabled = false;
             }
 

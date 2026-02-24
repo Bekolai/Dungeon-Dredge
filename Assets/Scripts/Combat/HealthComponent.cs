@@ -12,6 +12,8 @@ namespace DungeonDredge.Core
         [SerializeField] private float _maxHealth = 100f;
         [SerializeField] private bool _destroyOnDeath = true;
 
+        public bool DestroyOnDeath { get => _destroyOnDeath; set => _destroyOnDeath = value; }
+
         [Header("Events")]
         public UnityEvent OnDeath;
         public static Action OnPlayerDeathEvent;

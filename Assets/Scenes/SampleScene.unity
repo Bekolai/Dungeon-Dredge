@@ -389,7 +389,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8795088312581125079, guid: 4da3963df533e3240ad6f31ace54e419, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -9.998291
+      value: -9.997803
       objectReference: {fileID: 0}
     - target: {fileID: 8795088312581125079, guid: 4da3963df533e3240ad6f31ace54e419, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -916,6 +916,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5419452317185030544, guid: f1c3335393afd644295731674c446108, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5419452317185030544, guid: f1c3335393afd644295731674c446108, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6288549210772119175, guid: f1c3335393afd644295731674c446108, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -1135,6 +1143,7 @@ GameObject:
   - component: {fileID: 883437343}
   - component: {fileID: 883437342}
   - component: {fileID: 883437341}
+  - component: {fileID: 883437347}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1768,6 +1777,19 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 1e0ba9ad3a2f746d890c1fe2d0c87b2f, type: 3}
   levelUp:
   - {fileID: 8300000, guid: 622685aba6ffb47928d0e20ae84be81b, type: 3}
+--- !u!114 &883437347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 883437337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3468053bd6ad30e4b8e3eab5cb422140, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonDredge.Village.QuestManager
+  allQuests: []
 --- !u!1 &1563148207
 GameObject:
   m_ObjectHideFlags: 0
@@ -1973,6 +1995,8 @@ MonoBehaviour:
   generator: {fileID: 2015372743}
   itemDatabase: {fileID: 11400000, guid: b83b81393e88ed4498b0caa0c79b6949, type: 2}
   currentRank: 0
+  minDungeonTime: 300
+  maxDungeonTime: 1200
   playerPrefab: {fileID: 4971857915959286978, guid: f1443ecf17dae424aa8d1bd205f99bfb, type: 3}
   startingBackpack: {fileID: 0}
   backpackDatabase: {fileID: 0}

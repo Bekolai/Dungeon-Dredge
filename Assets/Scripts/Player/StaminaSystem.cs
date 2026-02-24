@@ -13,6 +13,7 @@ namespace DungeonDredge.Player
         [SerializeField] private float sprintDrainRate = 15f;
         [SerializeField] private float snailWalkDrainRate = 5f;
         [SerializeField] private float jumpStaminaCost = 10f;
+        [SerializeField] private float shoveStaminaCost = 15f;
 
         [Header("Recovery Settings")]
         [SerializeField] private float baseRecoveryRate = 20f;
@@ -22,10 +23,6 @@ namespace DungeonDredge.Player
         [Header("Thresholds")]
         [SerializeField] private float minimumSprintStamina = 10f;
 
-        [Header("Snail Tier Feedback")]
-        [SerializeField] private AudioSource breathingAudioSource;
-        [SerializeField] private AudioClip loudBreathingClip;
-        [SerializeField] private float breathingFadeSpeed = 2f;
 
         // State
         private float currentStamina;
@@ -33,7 +30,6 @@ namespace DungeonDredge.Player
         private float timeSinceLastDrain;
         private int enduranceLevel = 1;
         private bool isRecovering = true;
-        private float targetBreathingVolume = 0f;
 
         // Reference to movement for encumbrance info
         private PlayerMovement playerMovement;
@@ -46,6 +42,7 @@ namespace DungeonDredge.Player
         public bool CanJump => currentStamina >= jumpStaminaCost && 
                               (playerMovement == null || playerMovement.CurrentTier != EncumbranceTier.Snail);
         public bool IsExhausted => currentStamina <= 0f;
+        public bool CanShove => currentStamina >= shoveStaminaCost;
 
         // Events
         public System.Action OnStaminaDepleted;
@@ -85,32 +82,8 @@ namespace DungeonDredge.Player
 
             // Publish stamina update
             PublishStaminaUpdate();
-
-            // Update Snail tier feedback
-            UpdateBreathingAudio();
         }
 
-        private void UpdateBreathingAudio()
-        {
-            if (breathingAudioSource == null) return;
-
-            bool isSnail = playerMovement != null && playerMovement.CurrentTier == EncumbranceTier.Snail;
-            targetBreathingVolume = isSnail ? 1f : 0f;
-
-            if (targetBreathingVolume > 0 && !breathingAudioSource.isPlaying)
-            {
-                breathingAudioSource.clip = loudBreathingClip;
-                breathingAudioSource.loop = true;
-                breathingAudioSource.Play();
-            }
-
-            breathingAudioSource.volume = Mathf.MoveTowards(breathingAudioSource.volume, targetBreathingVolume, Time.deltaTime * breathingFadeSpeed);
-
-            if (breathingAudioSource.volume <= 0 && breathingAudioSource.isPlaying)
-            {
-                breathingAudioSource.Stop();
-            }
-        }
 
         private bool ShouldDrainStamina()
         {
@@ -149,7 +122,6 @@ namespace DungeonDredge.Player
             if (previousStamina > 0f && currentStamina <= 0f)
             {
                 OnStaminaDepleted?.Invoke();
-                AwardEnduranceXP();
             }
         }
 
@@ -198,7 +170,6 @@ namespace DungeonDredge.Player
             if (previousStamina > 0f && currentStamina <= 0f)
             {
                 OnStaminaDepleted?.Invoke();
-                AwardEnduranceXP();
             }
         }
 
@@ -216,15 +187,13 @@ namespace DungeonDredge.Player
             return true;
         }
 
-        private void AwardEnduranceXP()
+        public bool TryUseShoveStamina()
         {
-            // Award XP when stamina is fully depleted
-            EventBus.Publish(new PlayerStatChangedEvent
-            {
-                StatType = StatType.Endurance,
-                NewLevel = enduranceLevel,
-                CurrentXP = 0f // The stat system will handle actual XP
-            });
+            if (!CanShove)
+                return false;
+
+            ConsumeStamina(shoveStaminaCost);
+            return true;
         }
 
         public void SetEnduranceLevel(int level)

@@ -142,4 +142,15 @@ namespace DungeonDredge.Core
         Heavy,      // 100-120%
         Snail       // 120-140%
     }
+
+    public struct EnemyStunnedEvent
+    {
+        public GameObject Enemy;
+        public string EnemyName;
+    }
+
+    public struct NodeMinedEvent
+    {
+        public string ItemId;
+    }
 }

@@ -22,7 +22,7 @@ namespace DungeonDredge.Village
         private DungeonRank currentRank = DungeonRank.F;
 
         // Properties
-        public DungeonRank CurrentRank => currentRank;
+        public DungeonRank CurrentRank  => currentRank;
         public IReadOnlyList<string> ActiveQuests => activeQuests;
         public IReadOnlyList<string> CompletedQuests => completedQuests;
 
@@ -47,12 +47,16 @@ namespace DungeonDredge.Village
         {
             EventBus.Subscribe<ItemPickedUpEvent>(OnItemPickedUp);
             EventBus.Subscribe<ExtractionCompletedEvent>(OnExtraction);
+            EventBus.Subscribe<EnemyStunnedEvent>(OnEnemyStunned);
+            EventBus.Subscribe<NodeMinedEvent>(OnNodeMined);
         }
 
         private void OnDisable()
         {
             EventBus.Unsubscribe<ItemPickedUpEvent>(OnItemPickedUp);
             EventBus.Unsubscribe<ExtractionCompletedEvent>(OnExtraction);
+            EventBus.Unsubscribe<EnemyStunnedEvent>(OnEnemyStunned);
+            EventBus.Unsubscribe<NodeMinedEvent>(OnNodeMined);
         }
 
         #region Quest Management
@@ -155,6 +159,12 @@ namespace DungeonDredge.Village
             OnQuestCompleted?.Invoke(quest);
             return true;
         }
+
+    [ContextMenu("Debug Set Rank")]
+    public void DebugSetRank()
+    {
+        currentRank = DungeonRank.S;
+    }
 
         public void AbandonQuest(string questId)
         {
@@ -274,6 +284,47 @@ namespace DungeonDredge.Village
                     if (objective.objectiveType == QuestObjective.ObjectiveType.ExtractFromDungeon)
                     {
                         UpdateObjectiveProgress(questId, objective.objectiveId, 1);
+                    }
+                }
+            }
+        }
+
+        private void OnNodeMined(NodeMinedEvent evt)
+        {
+            foreach (var questId in activeQuests.ToList())
+            {
+                QuestData quest = GetQuest(questId);
+                if (quest == null) continue;
+
+                foreach (var objective in quest.objectives)
+                {
+                    if (objective.objectiveType == QuestObjective.ObjectiveType.MineNode)
+                    {
+                        if (objective.targetItem != null && objective.targetItem.itemId == evt.ItemId)
+                        {
+                            UpdateObjectiveProgress(questId, objective.objectiveId, 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void OnEnemyStunned(EnemyStunnedEvent evt)
+        {
+            foreach (var questId in activeQuests.ToList())
+            {
+                QuestData quest = GetQuest(questId);
+                if (quest == null) continue;
+
+                foreach (var objective in quest.objectives)
+                {
+                    if (objective.objectiveType == QuestObjective.ObjectiveType.StunEnemy)
+                    {
+                        if (string.IsNullOrEmpty(objective.targetEnemyName) || 
+                            objective.targetEnemyName.Equals(evt.EnemyName, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            UpdateObjectiveProgress(questId, objective.objectiveId, 1);
+                        }
                     }
                 }
             }

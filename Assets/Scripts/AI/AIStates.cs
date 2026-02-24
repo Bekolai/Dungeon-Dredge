@@ -12,7 +12,7 @@ namespace DungeonDredge.AI
 
         public override void Enter()
         {
-            if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
                 enemy.Agent.isStopped = true;
             idleTime = 0f;
             idleDuration = Random.Range(2f, 5f);
@@ -31,7 +31,7 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            if (enemy.Agent != null && enemy.Agent.isOnNavMesh)
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
                 enemy.Agent.isStopped = false;
         }
 
@@ -90,7 +90,8 @@ namespace DungeonDredge.AI
             }
 
             // Check if reached waypoint
-            if (!enemy.Agent.pathPending && enemy.Agent.remainingDistance <= enemy.PatrolPointReachThreshold)
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh && 
+                !enemy.Agent.pathPending && enemy.Agent.remainingDistance <= enemy.PatrolPointReachThreshold)
             {
                 waiting = true;
                 waitTime = Random.Range(1f, 3f);
@@ -104,6 +105,7 @@ namespace DungeonDredge.AI
             if (enemy.PatrolPoints == null || enemy.PatrolPoints.Length < 2)
             {
                 if (enemy.TryGetRandomPatrolPoint(out Vector3 randomPatrolPoint))
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
                 {
                     enemy.Agent.SetDestination(randomPatrolPoint);
                 }
@@ -117,7 +119,7 @@ namespace DungeonDredge.AI
 
             currentWaypointIndex = (currentWaypointIndex + 1) % enemy.PatrolPoints.Length;
             Transform nextPoint = enemy.PatrolPoints[currentWaypointIndex];
-            if (nextPoint == null || !enemy.Agent.SetDestination(nextPoint.position))
+            if (nextPoint == null || enemy.Agent == null || !enemy.Agent.isActiveAndEnabled || !enemy.Agent.isOnNavMesh || !enemy.Agent.SetDestination(nextPoint.position))
             {
                 waiting = true;
                 waitTime = 0.5f;
@@ -164,7 +166,7 @@ namespace DungeonDredge.AI
             investigateTime = 0f;
             reachedTarget = false;
             
-            if (enemy.InvestigationTarget != Vector3.zero)
+            if (enemy.InvestigationTarget != Vector3.zero && enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
             {
                 enemy.Agent.SetDestination(enemy.InvestigationTarget);
             }
@@ -178,13 +180,17 @@ namespace DungeonDredge.AI
             investigateTime += Time.deltaTime;
 
             // Check if reached investigation point
-            if (!enemy.Agent.pathPending && enemy.Agent.remainingDistance < 1f)
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh && 
+                !enemy.Agent.pathPending && enemy.Agent.remainingDistance < 1f)
             {
                 if (!reachedTarget)
                 {
                     reachedTarget = true;
                     // Look around
-                    enemy.Agent.isStopped = true;
+                    if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                    {
+                        enemy.Agent.isStopped = true;
+                    }
                 }
             }
 
@@ -197,14 +203,20 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.isStopped = false;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.isStopped = false;
+            }
             enemy.SetAlerted(false);
         }
 
         public override void OnNoiseHeard(Vector3 position, float intensity)
         {
             enemy.SetInvestigationTarget(position);
-            enemy.Agent.SetDestination(position);
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.SetDestination(position);
+            }
             investigateTime = 0f;
             reachedTarget = false;
         }
@@ -251,7 +263,10 @@ namespace DungeonDredge.AI
             nextStrikeTime = Time.time + Random.Range(1.5f, 3f);
             strafeDirection = Random.value < 0.5f ? -1 : 1;
 
-            enemy.Agent.speed = enemy.WalkSpeed;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.speed = enemy.WalkSpeed;
+            }
             enemy.SetAlerted(true);
             enemy.SetAggressive(false);
         }
@@ -286,7 +301,10 @@ namespace DungeonDredge.AI
 
             if (distance > DesiredMaxDistance)
             {
-                enemy.Agent.SetDestination(enemy.Target.position);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(enemy.Target.position);
+                }
                 return;
             }
 
@@ -296,7 +314,10 @@ namespace DungeonDredge.AI
                 Vector3 retreatPoint = enemy.transform.position + away * 4f;
                 if (NavMesh.SamplePosition(retreatPoint, out NavMeshHit retreatHit, 5f, NavMesh.AllAreas))
                 {
-                    enemy.Agent.SetDestination(retreatHit.position);
+                    if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                    {
+                        enemy.Agent.SetDestination(retreatHit.position);
+                    }
                 }
                 return;
             }
@@ -313,7 +334,10 @@ namespace DungeonDredge.AI
             Vector3 orbitPoint = enemy.Target.position + toTarget * -DesiredMinDistance + strafe * StrafeRadius;
             if (NavMesh.SamplePosition(orbitPoint, out NavMeshHit orbitHit, 4f, NavMesh.AllAreas))
             {
-                enemy.Agent.SetDestination(orbitHit.position);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(orbitHit.position);
+                }
             }
         }
 
@@ -345,7 +369,10 @@ namespace DungeonDredge.AI
             lostPlayerTime = 0f;
             strafeDirectionTimer = Random.Range(0.6f, 1.1f);
             strafeDirection = Random.value < 0.5f ? -1 : 1;
-            enemy.Agent.speed = enemy.ChaseSpeed;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.speed = enemy.ChaseSpeed;
+            }
             enemy.SetAggressive(true);
 
             if (enemy.Target != null)
@@ -359,9 +386,12 @@ namespace DungeonDredge.AI
             if (enemy.Target == null)
             {
                 // Lost target, go to last known position
-                enemy.Agent.SetDestination(lastKnownPosition);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(lastKnownPosition);
+                }
                 
-                if (enemy.Agent.remainingDistance < 1f)
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh && enemy.Agent.remainingDistance < 1f)
                 {
                     stateMachine.SetState<InvestigateState>();
                 }
@@ -373,7 +403,10 @@ namespace DungeonDredge.AI
             {
                 lostPlayerTime = 0f;
                 lastKnownPosition = enemy.Target.position;
-                enemy.Agent.SetDestination(enemy.Target.position);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(enemy.Target.position);
+                }
 
                 // Check attack range
                 float distance = Vector3.Distance(enemy.transform.position, enemy.Target.position);
@@ -405,7 +438,10 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.speed = enemy.WalkSpeed;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.speed = enemy.WalkSpeed;
+            }
             enemy.SetAggressive(false);
         }
 
@@ -432,7 +468,10 @@ namespace DungeonDredge.AI
 
             if (NavMesh.SamplePosition(strafePoint, out NavMeshHit hit, 3f, NavMesh.AllAreas))
             {
-                enemy.Agent.SetDestination(hit.position);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(hit.position);
+                }
             }
         }
     }
@@ -448,8 +487,11 @@ namespace DungeonDredge.AI
 
         public override void Enter()
         {
-            enemy.Agent.isStopped = true;
-            enemy.Agent.ResetPath();
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.isStopped = true;
+                enemy.Agent.ResetPath();
+            }
             attackCooldown = 0f;   
             hasCommittedAttack = false;
         }
@@ -534,7 +576,10 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.isStopped = false;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.isStopped = false;
+            }
         }
     }
 
@@ -558,7 +603,10 @@ namespace DungeonDredge.AI
             fleeTime = 0f;
             lostSightTime = 0f;
             stuckTime = 0f;
-            enemy.Agent.speed = enemy.ChaseSpeed;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.speed = enemy.ChaseSpeed;
+            }
             FleeFromPlayer();
         }
 
@@ -577,13 +625,15 @@ namespace DungeonDredge.AI
             }
 
             // Repath while fleeing if destination was reached or frequently while player is visible.
-            if (enemy.Agent.remainingDistance < 1f || (canSeePlayer && fleeTime % 2f < Time.deltaTime))
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh && 
+                (enemy.Agent.remainingDistance < 1f || (canSeePlayer && fleeTime % 2f < Time.deltaTime)))
             {
                 FleeFromPlayer();
             }
 
             // If the agent is barely moving while still trying to flee, force a new route.
-            if (enemy.Agent.hasPath &&
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh &&
+                enemy.Agent.hasPath &&
                 !enemy.Agent.pathPending &&
                 enemy.Agent.remainingDistance > 1f &&
                 enemy.Agent.velocity.sqrMagnitude <= StuckVelocityThreshold * StuckVelocityThreshold)
@@ -610,7 +660,10 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.speed = enemy.WalkSpeed;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.speed = enemy.WalkSpeed;
+            }
         }
 
         private void FleeFromPlayer()
@@ -624,7 +677,10 @@ namespace DungeonDredge.AI
             }
             else if (enemy.TryGetRandomPatrolPoint(out Vector3 patrolFallback))
             {
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
                 enemy.Agent.SetDestination(patrolFallback);
+            }
                 return;
             }
 
@@ -636,9 +692,12 @@ namespace DungeonDredge.AI
 
                 if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 8f, NavMesh.AllAreas))
                 {
-                    if (enemy.Agent.SetDestination(hit.position))
+                    if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
                     {
-                        return;
+                        if (enemy.Agent.SetDestination(hit.position))
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -646,7 +705,10 @@ namespace DungeonDredge.AI
             // Last fallback: roam point near patrol anchor.
             if (enemy.TryGetRandomPatrolPoint(out Vector3 fallbackPoint))
             {
-                enemy.Agent.SetDestination(fallbackPoint);
+                if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+                {
+                    enemy.Agent.SetDestination(fallbackPoint);
+                }
             }
         }
 
@@ -679,7 +741,10 @@ namespace DungeonDredge.AI
         public override void Enter()
         {
             stunTime = 0f;
-            enemy.Agent.isStopped = true;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.isStopped = true;
+            }
             enemy.SetStunned(true);
              enemy.PlayStunnedAnimation(); // NEW
         }
@@ -714,7 +779,10 @@ namespace DungeonDredge.AI
 
         public override void Exit()
         {
-            enemy.Agent.isStopped = false;
+            if (enemy.Agent != null && enemy.Agent.isActiveAndEnabled && enemy.Agent.isOnNavMesh)
+            {
+                enemy.Agent.isStopped = false;
+            }
             enemy.SetStunned(false);
         }
     }

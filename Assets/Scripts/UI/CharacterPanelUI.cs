@@ -251,9 +251,10 @@ namespace DungeonDredge.UI
             if (playerStats == null) return;
 
             // Strength
+            float strengthDamageBonus = (1f + (playerStats.Strength.level - 1) * 0.1f); // 10% per level above 1
             float strengthBonus = (playerStats.Strength.level - 1) * 2f;
-            string strDescription = $"Increases your maximum weight capacity.\n\n" +
-                                   $"<b>Current Bonus:</b> +{strengthBonus:F1} kg\n\n" +
+            string strDescription = $"Increases your maximum weight capacity and shove damage.\n\n" +
+                                   $"<b>Current Bonus:</b> +{strengthBonus:F1} kg, +{strengthDamageBonus:F1} damage\n\n" +
                                    $"<color=#AAAAAA><b>How to Train:</b>\nWalk while carrying items (overloaded).</color>";
             
             AddTooltip(strengthIcon != null ? strengthIcon.gameObject : null, "STRENGTH", strDescription, strengthColor);
@@ -264,7 +265,7 @@ namespace DungeonDredge.UI
             float delayReduction = (playerStats.Endurance.level - 1) * 0.1f;
             string endDescription = $"Increases maximum stamina and recovery speed.\n\n" +
                                    $"<b>Current Bonus:</b> +{staminaBonus:F0} Max Stamina, -{delayReduction:F1}s Recovery Delay\n\n" +
-                                   $"<color=#AAAAAA><b>How to Train:</b>\nSprinting or fully depleting your stamina.</color>";
+                                   $"<color=#AAAAAA><b>How to Train:</b>\n Train your endurance by walking or sprinting. (underloaded).</color>";
 
             AddTooltip(enduranceIcon != null ? enduranceIcon.gameObject : null, "ENDURANCE", endDescription, enduranceColor);
             AddTooltip(enduranceLevelText != null ? enduranceLevelText.gameObject : null, "ENDURANCE", endDescription, enduranceColor);

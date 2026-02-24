@@ -19,8 +19,10 @@ namespace DungeonDredge.Inventory
         [SerializeField] private InventoryGrid inventoryGrid;
         [SerializeField] private GameObject droppedBackpackPrefab;
 
-        [Header("Input")]
         [SerializeField] private InputActionReference dropBackpackAction;
+        [Tooltip("Fallback key for backpack drop if no InputActionReference is assigned")]
+        [SerializeField] private Key dropBackpackFallbackKey = Key.Z;
+
         [SerializeField] private InputActionReference openInventoryAction;
         [Tooltip("Fallback key for inventory toggle if no InputActionReference is assigned")]
         [SerializeField] private Key inventoryFallbackKey = Key.Tab;
@@ -129,6 +131,15 @@ namespace DungeonDredge.Inventory
                         CloseInventory();
                     else
                         OpenInventory();
+                }
+            }
+
+            if (dropBackpackAction == null || dropBackpackAction.action == null)
+            {
+                if (Keyboard.current != null && Keyboard.current[dropBackpackFallbackKey].wasPressedThisFrame)
+                {
+                    if (HasDroppedBackpack) TryPickupBackpack();
+                    else DropBackpack();
                 }
             }
 

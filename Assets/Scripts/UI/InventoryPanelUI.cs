@@ -28,6 +28,8 @@ namespace DungeonDredge.UI
         [SerializeField] private TextMeshProUGUI titleText;
         [SerializeField] private TextMeshProUGUI goldTotalText;
         [SerializeField] private TextMeshProUGUI itemCountText;
+        [SerializeField] private TextMeshProUGUI rankText;
+
 
         [Header("Drop Zone")]
         [SerializeField] private RectTransform gridBoundary;
@@ -238,6 +240,11 @@ namespace DungeonDredge.UI
             {
                 int itemCount = playerInventory.Grid.Items.Count;
                 itemCountText.text = $"{itemCount} items";
+            }
+
+            if (rankText != null)
+            {
+                rankText.text = $"Rank: {Village.QuestManager.Instance?.CurrentRank}";
             }
         }
 

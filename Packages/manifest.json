@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.antigravity.ide": "https://github.com/humza-13/Antigravity-Unity.git",
     "com.boxqkrtm.ide.cursor": "https://github.com/boxqkrtm/com.unity.ide.cursor.git",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.10",
